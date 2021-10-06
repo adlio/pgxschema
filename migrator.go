@@ -156,14 +156,16 @@ func (m Migrator) runMigration(tx Queryer, migration *Migration) error {
 	m.log(fmt.Sprintf("Migration '%s' applied in %s\n", migration.ID, executionTime))
 
 	checksum = fmt.Sprintf("%x", md5.Sum([]byte(migration.Script))) // #nosec not using MD5 cryptographically
-	_, err = tx.Exec(
-		m.ctx,
-		InsertSQL(QuotedTableName(m.SchemaName, m.TableName)),
-		migration.ID,
-		checksum,
-		executionTime.Milliseconds(),
-		startedAt,
+	tn := QuotedTableName(m.SchemaName, m.TableName)
+	query := fmt.Sprintf(`
+				INSERT INTO %s
+				( id, checksum, execution_time_in_millis, applied_at )
+				VALUES
+				( $1, $2, $3, $4 )
+				`,
+		tn,
 	)
+	_, err = tx.Exec(m.ctx, query, migration.ID, checksum, executionTime.Milliseconds(), startedAt)
 	return err
 }
 
