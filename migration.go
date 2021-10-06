@@ -35,7 +35,7 @@ func (m Migrator) GetAppliedMigrations(db Queryer) (applied map[string]*AppliedM
 	applied = make(map[string]*AppliedMigration)
 	migrations := make([]*AppliedMigration, 0)
 
-	rows, err := db.Query(m.ctx, SelectSQL(m.QuotedTableName()))
+	rows, err := db.Query(m.ctx, SelectSQL(QuotedTableName(m.SchemaName, m.TableName)))
 	if err != nil {
 		return
 	}

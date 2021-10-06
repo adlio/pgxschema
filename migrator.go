@@ -84,15 +84,9 @@ func (m Migrator) Apply(db Connection, migrations []*Migration) (err error) {
 	return err
 }
 
-// QuotedTableName returns the dialect-quoted fully-qualified name for the
-// migrations tracking table
-func (m Migrator) QuotedTableName() string {
-	return QuotedTableName(m.SchemaName, m.TableName)
-}
-
 func (m Migrator) createMigrationsTable(db Transactor) (err error) {
 	return m.transaction(db, func(ctx context.Context, tx pgx.Tx) error {
-		_, err := tx.Exec(ctx, CreateSQL(m.QuotedTableName()))
+		_, err := tx.Exec(ctx, CreateSQL(QuotedTableName(m.SchemaName, m.TableName)))
 		return err
 	})
 }
@@ -133,7 +127,7 @@ func (m Migrator) runMigration(tx Queryer, migration *Migration) error {
 	checksum = fmt.Sprintf("%x", md5.Sum([]byte(migration.Script))) // #nosec not using MD5 cryptographically
 	_, err = tx.Exec(
 		m.ctx,
-		InsertSQL(m.QuotedTableName()),
+		InsertSQL(QuotedTableName(m.SchemaName, m.TableName)),
 		migration.ID,
 		checksum,
 		executionTime.Milliseconds(),

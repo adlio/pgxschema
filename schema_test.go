@@ -117,7 +117,8 @@ func TestFailedMigration(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "TIBBLE") {
 		t.Errorf("Expected explanatory error from failed migration. Got %v", err)
 	}
-	rows, err := db.Query(context.Background(), "SELECT * FROM "+migrator.QuotedTableName())
+	quotedTableName := QuotedTableName(migrator.SchemaName, migrator.TableName)
+	rows, err := db.Query(context.Background(), "SELECT * FROM "+quotedTableName)
 	if err != nil {
 		t.Error(err)
 	}
