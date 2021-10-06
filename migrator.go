@@ -33,7 +33,7 @@ type Migrator struct {
 
 	// lockID is the identifier for the Postgres global advisory lock
 	// this value is computed from the TableName when the migrator is created
-	lockID string
+	lockID int64
 
 	// ctx holds the context in which the migrator is running.
 	ctx context.Context
@@ -88,7 +88,7 @@ func (m *Migrator) lock(db Queryer) {
 		// Abort if Migrator already had an error
 		return
 	}
-	query := fmt.Sprintf(`SELECT pg_advisory_lock(%s)`, m.lockID)
+	query := fmt.Sprintf(`SELECT pg_advisory_lock(%d)`, m.lockID)
 	_, err := db.Exec(m.ctx, query)
 	if err == nil {
 		m.log("Locked at ", time.Now().Format(time.RFC3339Nano))
@@ -115,7 +115,7 @@ func (m *Migrator) createMigrationsTable(tx Queryer) {
 }
 
 func (m *Migrator) unlock(db Queryer) {
-	query := fmt.Sprintf(`SELECT pg_advisory_unlock(%s)`, m.lockID)
+	query := fmt.Sprintf(`SELECT pg_advisory_unlock(%d)`, m.lockID)
 	_, err := db.Exec(m.ctx, query)
 	if err == nil {
 		m.log("Unlocked at ", time.Now().Format(time.RFC3339Nano))

@@ -1,13 +1,12 @@
 package pgxschema
 
 import (
-	"fmt"
 	"hash/crc32"
 	"strings"
 	"unicode"
 )
 
-const postgresAdvisoryLockSalt uint32 = 542384964
+const postgresAdvisoryLockSalt = 542384964
 
 // QuotedTableName returns the string value of the name of the migration
 // tracking table after it has been quoted for Postgres
@@ -39,8 +38,7 @@ func QuotedIdent(ident string) string {
 // LockIdentifierForTable computes a hash of the migrations table's name which
 // can be used as a unique name for the Postgres advisory lock
 //
-func LockIdentifierForTable(tableName string) string {
+func LockIdentifierForTable(tableName string) int64 {
 	sum := crc32.ChecksumIEEE([]byte(tableName))
-	sum = sum * postgresAdvisoryLockSalt
-	return fmt.Sprint(sum)
+	return int64(sum) * postgresAdvisoryLockSalt
 }

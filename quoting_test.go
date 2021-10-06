@@ -34,3 +34,11 @@ func TestQuotedIdent(t *testing.T) {
 		}
 	}
 }
+
+func TestLockIdentifierForTable(t *testing.T) {
+	id := LockIdentifierForTable(DefaultTableName)
+	expected := int64(2254546236185297208)
+	if id != expected {
+		t.Errorf("Expected %v, got %v", expected, id)
+	}
+}
