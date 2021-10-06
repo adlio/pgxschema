@@ -3,7 +3,6 @@ package pgxschema
 import (
 	"fmt"
 	"hash/crc32"
-	"strings"
 )
 
 const postgresAdvisoryLockSalt uint32 = 542384964
@@ -62,22 +61,6 @@ func SelectSQL(tableName string) string {
 		FROM %s
 		ORDER BY id ASC
 	`, tableName)
-}
-
-// QuotedTableName returns the string value of the name of the migration
-// tracking table after it has been quoted for Postgres
-//
-func QuotedTableName(schemaName, tableName string) string {
-	if schemaName == "" {
-		return quotedIdent(tableName)
-	}
-	return quotedIdent(schemaName) + "." + quotedIdent(tableName)
-}
-
-// quotedIdent wraps the supplied string in the Postgres identifier
-// quote character
-func quotedIdent(ident string) string {
-	return `"` + strings.ReplaceAll(ident, `"`, "") + `"`
 }
 
 // advisoryLockID generates a table-specific lock name to use
