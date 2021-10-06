@@ -10,16 +10,37 @@ import (
 	"github.com/jackc/pgx/v4"
 )
 
+// DefaultTableName defines the name of the database table which will
+// hold the status of applied migrations
+const DefaultTableName = "schema_migrations"
+
 const postgresAdvisoryLockSalt uint32 = 542384964
 
 // Migrator is an instance customized to perform migrations on a particular
 // against a particular tracking table and with a particular dialect
 // defined.
 type Migrator struct {
+	// SchemaName is the Postgres schema where the schema_migrations table
+	// will live. By default it will be blank, allowing the connection's
+	// search_path to be leveraged. It can be set at creation via the first
+	// argument to the WithTableName() option.
 	SchemaName string
-	TableName  string
-	Logger     Logger
-	ctx        context.Context
+
+	// TableName is the name of the table where the applied migrations will be
+	// persisted. Unlike SchemaName, this can't be blank. If not provided via an
+	// option, the DefaultTableName (schema_migrations) will be used instead.
+	TableName string
+
+	// Logger provides an optional way for the Migrator to report status
+	// messages. It is nil by default which results in no output.
+	Logger Logger
+
+	// ctx holds the context in which the migrator is running
+	ctx context.Context
+
+	// err holds the last error which occurred at any step of the migration
+	// process
+	err error
 }
 
 // NewMigrator creates a new Migrator with the supplied

@@ -16,10 +16,6 @@ var (
 	_ Queryer    = &pgxpool.Pool{}
 )
 
-// DefaultTableName defines the name of the database table which will
-// hold the status of applied migrations
-const DefaultTableName = "schema_migrations"
-
 // ErrNilDB is thrown when the database pointer is nil
 var ErrNilDB = errors.New("DB pointer is nil")
 
