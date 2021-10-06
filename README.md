@@ -3,9 +3,9 @@
 An opinionated, embeddable library for tracking and application modifications
 to your Go application's database schema.
 
-[![Build Status](https://travis-ci.org/adlio/pgxschema.svg?branch=master)](https://travis-ci.org/adlio/pgxschema)
+[![Build Status](https://app.travis-ci.com/adlio/pgxschema.svg?branch=main)](https://app.travis-ci.com/adlio/pgxschema)
 [![Go Report Card](https://goreportcard.com/badge/github.com/adlio/pgxschema)](https://goreportcard.com/report/github.com/adlio/pgxschema)
-[![codecov](https://codecov.io/gh/adlio/pgxschema/branch/master/graph/badge.svg)](https://codecov.io/gh/adlio/pgxschema)
+[![codecov](https://codecov.io/gh/adlio/pgxschema/branch/main/graph/badge.svg)](https://codecov.io/gh/adlio/pgxschema)
 [![GoDoc](https://godoc.org/github.com/adlio/pgxschema?status.svg)](https://godoc.org/github.com/adlio/pgxschema)
 
 ## Package Opinions
@@ -35,15 +35,15 @@ particular set of opinions:
 
 ## Usage Instructions
 
-Create a `schema.Migrator` in your bootstrap/config/database connection code,
+Create a `pgxschema.Migrator` in your bootstrap/config/database connection code,
 then call its `Apply()` method with your database connection and a slice of
-`*schema.Migration` structs. Like so:
+`*pgxschema.Migration` structs. Like so:
 
     db, err := pgxpool.Connect() // or pgx.Connect()
 
-    migrator := pgxschema.NewMigrator()
+    migrator := pgxpgxschema.NewMigrator()
     migrator.Apply(db, []*pgxschema.Migration{
-      &schema.Migration{
+      &pgxschema.Migration{
         ID: "2019-09-24 Create Albums",
         Script: `
         CREATE TABLE albums (
@@ -63,11 +63,11 @@ file with hundreds of lines of embedded SQL in it).
 
 The `NewMigrator()` function accepts option arguments to customize the dialect
 and the name of the migration tracking table. By default, the tracking table
-will be set to `schema.DefaultTableName` (`schema_migrations`). To change it
+will be set to `pgxschema.DefaultTableName` (`schema_migrations`). To change it
 to `my_migrations`:
 
 ```go
-migrator := schema.NewMigrator(schema.WithTableName("my_migrations"))
+migrator := pgxschema.NewMigrator(pgxschema.WithTableName("my_migrations"))
 ```
 
 It is theoretically possible to create multiple Migrators and to use mutliple
