@@ -107,8 +107,8 @@ func (m Migrator) lock(db Queryer) (err error) {
 		return ErrNilDB
 	}
 	lockID := m.AdvisoryLockID()
-	sql := fmt.Sprintf(`SELECT pg_advisory_lock(%s)`, lockID)
-	_, err = db.Exec(m.ctx, sql)
+	query := fmt.Sprintf(`SELECT pg_advisory_lock(%s)`, lockID)
+	_, err = db.Exec(m.ctx, query)
 	if err != nil {
 		return err
 	}
@@ -121,8 +121,8 @@ func (m Migrator) unlock(db Queryer) (err error) {
 		return ErrNilDB
 	}
 	lockID := m.AdvisoryLockID()
-	sql := fmt.Sprintf(`SELECT pg_advisory_unlock(%s)`, lockID)
-	_, err = db.Exec(m.ctx, sql)
+	query := fmt.Sprintf(`SELECT pg_advisory_unlock(%s)`, lockID)
+	_, err = db.Exec(m.ctx, query)
 	if err != nil {
 		return err
 	}
