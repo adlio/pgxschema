@@ -7,13 +7,6 @@ import (
 
 const postgresAdvisoryLockSalt uint32 = 542384964
 
-// Postgres is the dialect for Postgres-compatible
-// databases
-var Postgres = postgresDialect{}
-
-// Postgres is the Postgresql dialect
-type postgresDialect struct{}
-
 // LockSQL generates the global lock SQL statement
 func LockSQL(tableName string) string {
 	lockID := advisoryLockID(tableName)
