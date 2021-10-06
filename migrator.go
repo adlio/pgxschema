@@ -68,7 +68,7 @@ func (m *Migrator) Apply(db Connection, migrations []*Migration) error {
 
 	tx := m.beginTx(db)
 	m.lock(tx)
-	defer m.unlock(tx)           // ... ensure we unlock even if errors occured
+	defer m.unlock(tx)           // ... ensure we unlock even if errors occurred
 	defer m.commitOrRollback(tx) // ... ensure we commit or rollback when done
 	m.createMigrationsTable(tx)
 	m.run(tx, migrations)

@@ -43,17 +43,6 @@ func TestCommitOrRollbackRecoversErrorPanic(t *testing.T) {
 	}()
 	defer m.commitOrRollback(nil)
 	panic(ErrPriorFailure)
-
-	/*
-		db := connectDB(t, "postgres11")
-		m := NewMigrator()
-		err := m.transaction(db, func(ctx context.Context, tx pgx.Tx) error {
-			panic(errors.New("Panic Error"))
-		})
-		if err.Error() != "Panic Error" {
-			t.Errorf("Expected panic to be converted to error=Panic Error. Got %v", err)
-		}
-	*/
 }
 
 func TestCommitOrRollbackRecoversNakedPanic(t *testing.T) {

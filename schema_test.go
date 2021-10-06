@@ -86,7 +86,7 @@ func TestMain(m *testing.M) {
 			log.Fatalf("Could not start container %s:%s: %s", info.DockerRepo, info.DockerTag, err)
 		}
 
-		// Set the container to expire in a minute to avoid orphaned contianers
+		// Set the container to expire in a minute to avoid orphaned containers
 		// hanging around
 		err = info.Resource.Expire(60)
 		if err != nil {
