@@ -5,14 +5,16 @@ import (
 	"time"
 )
 
-// Migration is a yet-to-be-run change to the schema
+// Migration is a yet-to-be-run change to the schema. This is the type which
+// is provided to Migrator.Apply to request a schema change.
 type Migration struct {
 	ID     string
 	Script string
 }
 
-// AppliedMigration is a schema change which was successfully
-// completed
+// AppliedMigration represents a successfully-executed migration. It embeds
+// Migration, and adds fields for execution results. This type is what
+// records persisted in the schema_migrations table align with.
 type AppliedMigration struct {
 	Migration
 	Checksum              string
