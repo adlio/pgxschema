@@ -1,6 +1,7 @@
 package pgxschema
 
 import (
+	"fmt"
 	"sort"
 	"time"
 )
@@ -37,11 +38,19 @@ func (m Migrator) GetAppliedMigrations(db Queryer) (applied map[string]*AppliedM
 	applied = make(map[string]*AppliedMigration)
 	migrations := make([]*AppliedMigration, 0)
 
-	rows, err := db.Query(m.ctx, SelectSQL(QuotedTableName(m.SchemaName, m.TableName)))
+	tn := QuotedTableName(m.SchemaName, m.TableName)
+	query := fmt.Sprintf(`
+		SELECT id, checksum, execution_time_in_millis, applied_at
+		FROM %s
+		ORDER BY id ASC
+	`, tn)
+
+	rows, err := db.Query(m.ctx, query)
 	if err != nil {
 		return
 	}
 	defer rows.Close()
+
 	for rows.Next() {
 		migration := AppliedMigration{}
 		err = rows.Scan(&migration.ID, &migration.Checksum, &migration.ExecutionTimeInMillis, &migration.AppliedAt)
