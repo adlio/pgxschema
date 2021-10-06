@@ -4,10 +4,13 @@ import (
 	"context"
 	"crypto/md5" // #nosec MD5 not being used cryptographically
 	"fmt"
+	"hash/crc32"
 	"time"
 
 	"github.com/jackc/pgx/v4"
 )
+
+const postgresAdvisoryLockSalt uint32 = 542384964
 
 // Migrator is an instance customized to perform migrations on a particular
 // against a particular tracking table and with a particular dialect
@@ -30,6 +33,14 @@ func NewMigrator(options ...Option) Migrator {
 		m = opt(m)
 	}
 	return m
+}
+
+// AdvisoryLockID computes a unique identifier for this migrator's global
+// advisory lock. It's based on the migrator's TableName.
+func (m Migrator) AdvisoryLockID() string {
+	sum := crc32.ChecksumIEEE([]byte(m.TableName))
+	sum = sum * postgresAdvisoryLockSalt
+	return fmt.Sprint(sum)
 }
 
 // Apply takes a slice of Migrations and applies any which have not yet
@@ -95,18 +106,28 @@ func (m Migrator) lock(db Queryer) (err error) {
 	if db == nil {
 		return ErrNilDB
 	}
-	_, err = db.Exec(m.ctx, LockSQL(m.TableName))
+	lockID := m.AdvisoryLockID()
+	sql := fmt.Sprintf(`SELECT pg_advisory_lock(%s)`, lockID)
+	_, err = db.Exec(m.ctx, sql)
+	if err != nil {
+		return err
+	}
 	m.log("Locked at ", time.Now().Format(time.RFC3339Nano))
-	return err
+	return nil
 }
 
 func (m Migrator) unlock(db Queryer) (err error) {
 	if db == nil {
 		return ErrNilDB
 	}
-	_, err = db.Exec(m.ctx, UnlockSQL(m.TableName))
+	lockID := m.AdvisoryLockID()
+	sql := fmt.Sprintf(`SELECT pg_advisory_unlock(%s)`, lockID)
+	_, err = db.Exec(m.ctx, sql)
+	if err != nil {
+		return err
+	}
 	m.log("Unlocked at ", time.Now().Format(time.RFC3339Nano))
-	return err
+	return nil
 }
 
 func (m Migrator) runMigration(tx Queryer, migration *Migration) error {
