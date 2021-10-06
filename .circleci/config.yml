@@ -32,7 +32,7 @@ jobs:
           command: go build .
       - run:
           name: Execute Go Tests
-          command: go test -race -coverprofile=coverage.txt -covermode=count
+          command: go test -race -coverprofile=coverage.txt -covermode=atomic
       - run:
           name: Upload Code Coverage
           command: bash <(curl -s https://codecov.io/bash)
