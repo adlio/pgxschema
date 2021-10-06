@@ -18,10 +18,10 @@ func WithTableName(names ...string) Option {
 		case 0:
 			// No-op if no customization was provided
 		case 1:
-			m.TableName = names[0]
+			m.tableName = names[0]
 		default:
-			m.SchemaName = names[0]
-			m.TableName = names[1]
+			m.schemaName = names[0]
+			m.tableName = names[1]
 		}
 		return m
 	}

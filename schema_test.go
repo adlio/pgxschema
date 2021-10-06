@@ -12,11 +12,43 @@ import (
 	"time"
 
 	// Postgres database driver
+	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 
 	"github.com/ory/dockertest"
 )
+
+// BadQueryer implements the Queryer interface, but fails on every call to
+// Exec or Query. The error message will include the SQL statement to help
+// verify the "right" failure occurred.
+type BadQueryer struct{}
+
+func (bq BadQueryer) Exec(ctx context.Context, sql string, args ...interface{}) (pgconn.CommandTag, error) {
+	return []byte{}, fmt.Errorf("FAIL: %s", strings.TrimSpace(sql))
+}
+
+func (bq BadQueryer) Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error) {
+	return nil, fmt.Errorf("FAIL: %s", strings.TrimSpace(sql))
+}
+
+var ErrBeginFailed = fmt.Errorf("Begin Failed")
+
+// BadTransactor implements the Connection interface, but fails to Begin any
+// transactions.
+type BadTransactor struct{}
+
+func (bt BadTransactor) Begin(ctx context.Context) (pgx.Tx, error) {
+	return nil, ErrBeginFailed
+}
+
+func (bt BadTransactor) Exec(ctx context.Context, sql string, args ...interface{}) (pgconn.CommandTag, error) {
+	return []byte{}, nil
+}
+
+func (bt BadTransactor) Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error) {
+	return nil, nil
+}
 
 type ConnInfo struct {
 	DockerRepo string
@@ -28,7 +60,7 @@ type ConnInfo struct {
 var DBConns = map[string]*ConnInfo{
 	"postgres11": {
 		DockerRepo: "postgres",
-		DockerTag:  "13",
+		DockerTag:  "11",
 	},
 }
 
@@ -91,22 +123,9 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func TestGetAppliedMigrationsErrorsWhenNoneExist(t *testing.T) {
-	db := connectDB(t, "postgres11")
-	migrator := NewMigrator(WithTableName(time.Now().Format(time.RFC3339Nano)))
-	migrations, err := migrator.GetAppliedMigrations(db)
-	if err == nil {
-		t.Error("Expected an error. Got none.")
-	}
-	if len(migrations) > 0 {
-		t.Error("Expected empty list of applied migrations")
-	}
-}
-
 func TestFailedMigration(t *testing.T) {
 	db := connectDB(t, "postgres11")
-	tableName := time.Now().Format(time.RFC3339Nano)
-	migrator := NewMigrator(WithTableName(tableName))
+	migrator := makeTestMigrator()
 	migrations := []*Migration{
 		{
 			ID:     "2019-01-01 Bad Migration",
@@ -117,10 +136,10 @@ func TestFailedMigration(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "TIBBLE") {
 		t.Errorf("Expected explanatory error from failed migration. Got %v", err)
 	}
-	quotedTableName := QuotedTableName(migrator.SchemaName, migrator.TableName)
+	quotedTableName := QuotedTableName(migrator.schemaName, migrator.tableName)
 	rows, err := db.Query(context.Background(), "SELECT * FROM "+quotedTableName)
-	if err != nil {
-		t.Error(err)
+	if err == nil || !strings.Contains(err.Error(), "does not exist") {
+		t.Error("Expected the schema table to not exist")
 	}
 	if rows.Next() {
 		t.Error("Record was inserted in tracking table even though the migration failed")

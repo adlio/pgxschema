@@ -10,43 +10,43 @@ func TestWithTableNameOptionWithSchema(t *testing.T) {
 	schema := "special"
 	table := "my_migrations"
 	m := NewMigrator(WithTableName(schema, table))
-	if m.SchemaName != schema {
-		t.Errorf("Expected SchemaName to be '%s'. Got '%s' instead.", schema, m.SchemaName)
+	if m.schemaName != schema {
+		t.Errorf("Expected SchemaName to be '%s'. Got '%s' instead.", schema, m.schemaName)
 	}
-	if m.TableName != table {
-		t.Errorf("Expected TableName to be '%s'. Got '%s' instead.", table, m.TableName)
+	if m.tableName != table {
+		t.Errorf("Expected TableName to be '%s'. Got '%s' instead.", table, m.tableName)
 	}
 }
 
 func TestWithTableNameOptionWithoutSchema(t *testing.T) {
 	name := "terrible_migrations_table_name"
 	m := NewMigrator(WithTableName(name))
-	if m.SchemaName != "" {
-		t.Errorf("Expected SchemaName to be blank. Got '%s' instead.", m.SchemaName)
+	if m.schemaName != "" {
+		t.Errorf("Expected SchemaName to be blank. Got '%s' instead.", m.schemaName)
 	}
-	if m.TableName != name {
-		t.Errorf("Expected TableName to be '%s'. Got '%s' instead.", name, m.TableName)
+	if m.tableName != name {
+		t.Errorf("Expected TableName to be '%s'. Got '%s' instead.", name, m.tableName)
 	}
 }
 
 func TestWithTableNameOptionWithNoArgs(t *testing.T) {
 	m := NewMigrator(WithTableName())
-	if m.SchemaName != "" {
-		t.Errorf("Expected SchemaName to be blank. Got '%s' instead.", m.SchemaName)
+	if m.schemaName != "" {
+		t.Errorf("Expected SchemaName to be blank. Got '%s' instead.", m.schemaName)
 	}
-	if m.TableName != DefaultTableName {
-		t.Errorf("Expected TableName to be the default '%s'. Got '%s' instead.", DefaultTableName, m.TableName)
+	if m.tableName != DefaultTableName {
+		t.Errorf("Expected TableName to be the default '%s'. Got '%s' instead.", DefaultTableName, m.tableName)
 	}
 }
 
 func TestDefaultTableName(t *testing.T) {
 	name := "schema_migrations"
 	m := NewMigrator()
-	if m.SchemaName != "" {
-		t.Errorf("Expected SchemaName to be blank by default. Got '%s' instead.", m.SchemaName)
+	if m.schemaName != "" {
+		t.Errorf("Expected SchemaName to be blank by default. Got '%s' instead.", m.schemaName)
 	}
-	if m.TableName != name {
-		t.Errorf("Expected TableName to be '%s' by default. Got '%s' instead.", name, m.TableName)
+	if m.tableName != name {
+		t.Errorf("Expected TableName to be '%s' by default. Got '%s' instead.", name, m.tableName)
 	}
 }
 
