@@ -3,7 +3,6 @@ package pgxschema
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
@@ -43,35 +42,4 @@ type Queryer interface {
 // both of which can start new transactions.
 type Transactor interface {
 	Begin(ctx context.Context) (pgx.Tx, error)
-}
-
-// transaction wraps the supplied function in a transaction with the supplied
-// database connecion
-//
-func (m *Migrator) transaction(db Transactor, f func(context.Context, pgx.Tx) error) (err error) {
-	if db == nil {
-		return ErrNilDB
-	}
-	tx, err := db.Begin(m.ctx)
-	if err != nil {
-		return
-	}
-
-	defer func() {
-		if p := recover(); p != nil {
-			switch p := p.(type) {
-			case error:
-				err = p
-			default:
-				err = fmt.Errorf("%s", p)
-			}
-		}
-		if err != nil {
-			_ = tx.Rollback(m.ctx)
-			return
-		}
-		err = tx.Commit(m.ctx)
-	}()
-
-	return f(m.ctx, tx)
 }
