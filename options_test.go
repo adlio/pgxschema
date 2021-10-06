@@ -17,6 +17,7 @@ func TestWithTableNameOptionWithSchema(t *testing.T) {
 		t.Errorf("Expected TableName to be '%s'. Got '%s' instead.", table, m.TableName)
 	}
 }
+
 func TestWithTableNameOptionWithoutSchema(t *testing.T) {
 	name := "terrible_migrations_table_name"
 	m := NewMigrator(WithTableName(name))
@@ -25,6 +26,16 @@ func TestWithTableNameOptionWithoutSchema(t *testing.T) {
 	}
 	if m.TableName != name {
 		t.Errorf("Expected TableName to be '%s'. Got '%s' instead.", name, m.TableName)
+	}
+}
+
+func TestWithTableNameOptionWithNoArgs(t *testing.T) {
+	m := NewMigrator(WithTableName())
+	if m.SchemaName != "" {
+		t.Errorf("Expected SchemaName to be blank. Got '%s' instead.", m.SchemaName)
+	}
+	if m.TableName != DefaultTableName {
+		t.Errorf("Expected TableName to be the default '%s'. Got '%s' instead.", DefaultTableName, m.TableName)
 	}
 }
 
