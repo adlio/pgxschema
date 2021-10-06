@@ -28,7 +28,7 @@ type ConnInfo struct {
 var DBConns = map[string]*ConnInfo{
 	"postgres11": {
 		DockerRepo: "postgres",
-		DockerTag:  "11",
+		DockerTag:  "13",
 	},
 }
 
