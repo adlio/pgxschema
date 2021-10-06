@@ -96,8 +96,18 @@ func (m Migrator) Apply(db Connection, migrations []*Migration) (err error) {
 }
 
 func (m Migrator) createMigrationsTable(db Transactor) (err error) {
+	tn := QuotedTableName(m.SchemaName, m.TableName)
+	query := fmt.Sprintf(`
+				CREATE TABLE IF NOT EXISTS %s (
+					id VARCHAR(255) NOT NULL,
+					checksum VARCHAR(32) NOT NULL DEFAULT '',
+					execution_time_in_millis INTEGER NOT NULL DEFAULT 0,
+					applied_at TIMESTAMP WITH TIME ZONE NOT NULL
+				)
+			`, tn)
+
 	return m.transaction(db, func(ctx context.Context, tx pgx.Tx) error {
-		_, err := tx.Exec(ctx, CreateSQL(QuotedTableName(m.SchemaName, m.TableName)))
+		_, err := tx.Exec(ctx, query)
 		return err
 	})
 }
