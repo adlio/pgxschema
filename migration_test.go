@@ -14,7 +14,7 @@ func TestMD5(t *testing.T) {
 }
 
 func TestSortMigrations(t *testing.T) {
-	migrations := makeValidMigrations()
+	migrations := makeValidUnorderedMigrations()
 	expectedFirst := "2021-01-01 001"
 	expectedSecond := "2021-01-01 002"
 	expectedThird := "2021-01-01 003"

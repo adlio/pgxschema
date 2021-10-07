@@ -332,14 +332,14 @@ func TestComputeMigrationPlanFailure(t *testing.T) {
 func TestRunFailure(t *testing.T) {
 	bq := BadQueryer{}
 	m := makeTestMigrator()
-	m.run(bq, makeValidMigrations())
+	m.run(bq, makeValidUnorderedMigrations())
 	expectedContents := "FAIL: SELECT id, checksum"
 	if m.err == nil || !strings.Contains(m.err.Error(), expectedContents) {
 		t.Errorf("Expected error msg with '%s'. Got '%v'.", expectedContents, m.err)
 	}
 
 	m.err = ErrPriorFailure
-	m.run(bq, makeValidMigrations())
+	m.run(bq, makeValidUnorderedMigrations())
 	if m.err != ErrPriorFailure {
 		t.Errorf("Expected error %v. Got %v.", ErrPriorFailure, m.err)
 	}
@@ -370,7 +370,7 @@ func makeTestMigrator() Migrator {
 	return NewMigrator(WithTableName(tableName))
 }
 
-func makeValidMigrations() []*Migration {
+func makeValidUnorderedMigrations() []*Migration {
 	return []*Migration{
 		{
 			ID: "2021-01-01 002",
