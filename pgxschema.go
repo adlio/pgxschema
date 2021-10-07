@@ -5,14 +5,6 @@ import (
 
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
-)
-
-var (
-	_ Transactor = &pgx.Conn{}
-	_ Transactor = &pgxpool.Pool{}
-	_ Queryer    = &pgx.Conn{}
-	_ Queryer    = &pgxpool.Pool{}
 )
 
 // Connection defines the interface for either a *pgxpool.Pool or a *pgx.Conn,
