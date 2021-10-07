@@ -1,5 +1,7 @@
 package pgxschema
 
+import "context"
+
 // Option supports option chaining when creating a Migrator.
 // An Option is a function which takes a Migrator and
 // returns a Migrator with an Option modified.
@@ -40,6 +42,15 @@ type Logger interface {
 func WithLogger(logger Logger) Option {
 	return func(m Migrator) Migrator {
 		m.Logger = logger
+		return m
+	}
+}
+
+// WithContext builds an option which will set the Migrator's context to the
+// one provided.
+func WithContext(ctx context.Context) Option {
+	return func(m Migrator) Migrator {
+		m.ctx = ctx
 		return m
 	}
 }

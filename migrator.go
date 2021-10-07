@@ -63,9 +63,8 @@ func (m *Migrator) Apply(db Connection, migrations []*Migration) error {
 	if db == nil {
 		return ErrNilDB
 	}
-	m.ctx = context.Background()
-	m.err = nil
 
+	m.err = nil
 	tx := m.beginTx(db)
 	m.lock(tx)
 	defer m.unlock(tx)           // ... ensure we unlock even if errors occurred

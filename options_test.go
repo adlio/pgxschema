@@ -1,6 +1,7 @@
 package pgxschema
 
 import (
+	"context"
 	"log"
 	"os"
 	"testing"
@@ -58,5 +59,25 @@ func TestWithLoggerOption(t *testing.T) {
 	modifiedMigrator := WithLogger(log.New(os.Stdout, "schema: ", log.Ldate|log.Ltime))(m)
 	if modifiedMigrator.Logger == nil {
 		t.Errorf("Expected logger to have been added")
+	}
+}
+
+type testCtxKey int
+
+const KeyFoo testCtxKey = iota
+
+func TestWithContextOption(t *testing.T) {
+	m := Migrator{}
+	if m.ctx != nil {
+		t.Errorf("Expected nil ctx by default. Got '%v'.", m.ctx)
+	}
+	ctx := context.WithValue(context.Background(), KeyFoo, "123456")
+	modifiedMigrator := WithContext(ctx)(m)
+	if modifiedMigrator.ctx == nil {
+		t.Errorf("Expected non-nil ctx after applying WithContext")
+	}
+	val := modifiedMigrator.ctx.Value(KeyFoo)
+	if val.(string) != "123456" {
+		t.Error("Context didn't contain expected value")
 	}
 }
