@@ -3,10 +3,10 @@
 An opinionated, embeddable library for tracking and application modifications
 to your Go application's database schema.
 
-[![Build Status](https://app.travis-ci.com/adlio/pgxschema.svg?branch=main)](https://app.travis-ci.com/adlio/pgxschema)
-[![Go Report Card](https://goreportcard.com/badge/github.com/adlio/pgxschema)](https://goreportcard.com/report/github.com/adlio/pgxschema)
-[![codecov](https://codecov.io/gh/adlio/pgxschema/branch/main/graph/badge.svg)](https://codecov.io/gh/adlio/pgxschema)
-[![GoDoc](https://godoc.org/github.com/adlio/pgxschema?status.svg)](https://godoc.org/github.com/adlio/pgxschema)
+[![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=for-the-badge)](https://pkg.go.dev/adlio/pgxschema)
+![CircleCI](https://img.shields.io/circleci/build/github/adlio/pgxschema/main?style=for-the-badge)
+![Go Report Card](https://goreportcard.com/badge/github.com/adlio/pgxschema?style=for-the-badge)
+![Codecov](https://img.shields.io/codecov/c/github/adlio/pgxschema?style=for-the-badge)
 
 ## Package Opinions
 
