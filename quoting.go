@@ -18,21 +18,32 @@ func QuotedTableName(schemaName, tableName string) string {
 	return QuotedIdent(schemaName) + "." + QuotedIdent(tableName)
 }
 
-// QuotedIdent wraps the supplied string in the Postgres identifier
-// quote character
+// QuotedIdent transforms the provided string into a valid, quoted Postgres
+// identifier. This
 func QuotedIdent(ident string) string {
-	return `"` + strings.Map(func(r rune) rune {
-		if unicode.IsSpace(r) {
-			return -1
+	if ident == "" {
+		return ""
+	}
+
+	var sb strings.Builder
+	sb.WriteRune('"')
+	for _, r := range ident {
+		switch {
+		case unicode.IsSpace(r):
+			// Skip spaces
+			continue
+		case r == '"':
+			// Escape double-quotes with repeated double-quotes
+			sb.WriteString(`""`)
+		case r == ';':
+			// Ignore the command termination character
+			continue
+		default:
+			sb.WriteRune(r)
 		}
-		if r == '"' {
-			return -1
-		}
-		if r == ';' {
-			return -1
-		}
-		return r
-	}, ident) + `"`
+	}
+	sb.WriteRune('"')
+	return sb.String()
 }
 
 // LockIdentifierForTable computes a hash of the migrations table's name which
