@@ -7,9 +7,12 @@
 
 An opinionated, embedded library for tracking and applying modifications
 to the PostgreSQL schema from inside a Go application using the
-[jackc/pgx](https://github.com/jackc/pgx) driver. If you use a `database/sql`
-driver instead, please see the related
+[jackc/pgx](https://github.com/jackc/pgx) driver.
+
+**NOTE**: If you use a `database/sql` driver instead, please see the related
 [adlio/schema](https://github.com/adlio/schema) package.
+
+# Introduction
 
 Tools like
 [goose](https://github.com/pressly/goose) and
@@ -25,7 +28,10 @@ of the environment.
 Every approach has tradeoffs. If your project involves a DBA applying
 schema changes manually, this library is definitely not for you. On the other hand
 if you're distributing your application to end-users via a standalone Go binary,
-this approach might be perfect.
+this approach might be perfect. This approach also works well in
+a cloud-native environment like Kubernetes or Google AppEngine, as long as
+you have good procedures to catch errors in your migrations before they hit
+production.
 
 # Usage Instructions
 
@@ -35,7 +41,7 @@ then call its `Apply()` method with your database connection and a slice of
 
     db, err := pgxpool.Connect() // or pgx.Connect()
 
-    migrator := pgxpgxschema.NewMigrator()
+    migrator := pgxschema.NewMigrator()
     migrator.Apply(db, []*pgxschema.Migration{
       &pgxschema.Migration{
         ID: "2019-09-24 Create Albums",
@@ -60,8 +66,8 @@ The `NewMigrator()` function accepts option arguments to customize its behavior.
 ## WithTableName
 
 By default, the tracking table will be placed in the schema from the
-`search_path`, and it will be named `schema_migrations`. This behavior can
-be changed by supplying a `WithTableName()` option to the `NewMigrator()`.
+search_path, and it will be named `schema_migrations`. This behavior can
+be changed by supplying a WithTableName() option to the NewMigrator() call.
 
 ```go
 m := pgxschema.NewMigrator(pgxschema.WithTableName("my_migrations"))
@@ -159,8 +165,6 @@ particular set of opinions:
    and the `jackc/pgx` driver code.
    (**NOTE** \*We do import `ory/dockertest` to automate testing on various
    PostgreSQL versions via docker).
-7. Finally... storing raw SQL as strings inside `.go` files is an acceptable
-   trade-off for the above.
 
 ## Testing Procedure
 
