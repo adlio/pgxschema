@@ -4,21 +4,6 @@ import (
 	"testing"
 )
 
-func TestPostgres11CreateMigrationsTable(t *testing.T) {
-	db := connectDB(t, "postgres11")
-	migrator := NewMigrator()
-	migrator.createMigrationsTable(db)
-	if migrator.err != nil {
-		t.Errorf("Error occurred when creating migrations table: %s", migrator.err)
-	}
-
-	// Test that we can re-run it safely
-	migrator.createMigrationsTable(db)
-	if migrator.err != nil {
-		t.Errorf("Calling createMigrationsTable a second time failed: %s", migrator.err)
-	}
-}
-
 func TestPostgres11MultiStatementMigrations(t *testing.T) {
 	db := connectDB(t, "postgres11")
 	tableName := "musicdatabase_migrations"

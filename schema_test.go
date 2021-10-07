@@ -68,6 +68,10 @@ var DBConns = map[string]*ConnInfo{
 		DockerRepo: "postgres",
 		DockerTag:  "11",
 	},
+	"postgres13": {
+		DockerRepo: "postgres",
+		DockerTag:  "14",
+	},
 }
 
 // TestMain replaces the normal test runner for this package. It connects to
@@ -259,6 +263,24 @@ func TestSimultaneousMigrations(t *testing.T) {
 		t.Errorf("Expected to get %d rows in %s table. Instead got %d", concurrency+1, dataTable, count)
 	}
 
+}
+
+// withLatestDB runs the provided function with a connection to the most recent
+// version of PostgreSQL
+func withLatestDB(t *testing.T, f func(db *pgxpool.Pool)) {
+	db := connectDB(t, "postgres13")
+	f(db)
+}
+
+// withEachDB runs the provided function with a connection to all PostgreSQL
+// versions defined in the DBConns constant
+func withEachDB(t *testing.T, f func(db *pgxpool.Pool)) {
+	for dbName := range DBConns {
+		t.Run(dbName, func(t *testing.T) {
+			db := connectDB(t, dbName)
+			f(db)
+		})
+	}
 }
 
 func connectDB(t *testing.T, name string) *pgxpool.Pool {

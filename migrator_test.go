@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 func TestApplyWithNilDBProvidesHelpfulError(t *testing.T) {
@@ -21,15 +23,17 @@ func TestApplyWithNilDBProvidesHelpfulError(t *testing.T) {
 	}
 }
 func TestGetAppliedMigrationsErrorsWhenNoneExist(t *testing.T) {
-	db := connectDB(t, "postgres11")
-	migrator := makeTestMigrator()
-	migrations, err := migrator.GetAppliedMigrations(db)
-	if err == nil {
-		t.Error("Expected an error. Got none.")
-	}
-	if len(migrations) > 0 {
-		t.Error("Expected empty list of applied migrations")
-	}
+	withLatestDB(t, func(db *pgxpool.Pool) {
+		migrator := makeTestMigrator()
+		migrations, err := migrator.GetAppliedMigrations(db)
+		if err == nil {
+
+			t.Error("Expected an error. Got  none.")
+		}
+		if len(migrations) > 0 {
+			t.Error("Expected empty list of applied migrations")
+		}
+	})
 }
 
 func TestCommitOrRollbackRecoversErrorPanic(t *testing.T) {
@@ -65,16 +69,17 @@ func TestBeginTxFailure(t *testing.T) {
 }
 
 func TestLockAndUnlockSuccess(t *testing.T) {
-	db := connectDB(t, "postgres11")
-	m := makeTestMigrator()
-	m.lock(db)
-	if m.err != nil {
-		t.Error(m.err)
-	}
-	m.unlock(db)
-	if m.err != nil {
-		t.Error(m.err)
-	}
+	withLatestDB(t, func(db *pgxpool.Pool) {
+		m := makeTestMigrator()
+		m.lock(db)
+		if m.err != nil {
+			t.Error(m.err)
+		}
+		m.unlock(db)
+		if m.err != nil {
+			t.Error(m.err)
+		}
+	})
 }
 
 func TestLockFailure(t *testing.T) {
@@ -109,6 +114,21 @@ func TestUnlockFailure(t *testing.T) {
 	}
 }
 
+func TestCreateMigrationsTable(t *testing.T) {
+	withEachDB(t, func(db *pgxpool.Pool) {
+		migrator := makeTestMigrator()
+		migrator.createMigrationsTable(db)
+		if migrator.err != nil {
+			t.Errorf("Error occurred when creating migrations table: %s", migrator.err)
+		}
+
+		// Test that we can re-run it safely
+		migrator.createMigrationsTable(db)
+		if migrator.err != nil {
+			t.Errorf("Calling createMigrationsTable a second time failed: %s", migrator.err)
+		}
+	})
+}
 func TestCreateMigrationsTableFailure(t *testing.T) {
 	m := makeTestMigrator()
 	bq := BadQueryer{}
