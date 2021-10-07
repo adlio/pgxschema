@@ -124,7 +124,7 @@ have been successfully applied.
 - [x] Alter transaction handling to be more PostgreSQL-specific
 - [x] 100% test coverage, including running against multiple PostgreSQL versions
 - [ ] Support for creating []\*Migration from a Go 1.16 `embed.FS`
-- [ ] Documentations for using Go 1.16 // go:embed to populate Script variables
+- [ ] Documentation for using Go 1.16 // go:embed to populate Script variables
 - [ ] Options for alternative failure behavior when `pg_advisory_lock()` takes too long.
       The current behavior should allow for early failure by providing a context with a
       timeout to `WithContext()`, but this hasn't been tested.
