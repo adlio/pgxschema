@@ -8,8 +8,6 @@ import (
 	"time"
 )
 
-var ErrPriorFailure = fmt.Errorf("Previous error")
-
 func TestApplyWithNilDBProvidesHelpfulError(t *testing.T) {
 	m := NewMigrator()
 	err := m.Apply(nil, []*Migration{

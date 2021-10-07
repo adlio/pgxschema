@@ -19,6 +19,14 @@ import (
 	"github.com/ory/dockertest"
 )
 
+var (
+	// ErrBeginFailed indicates that the Begin() method failed (couldn't start Tx)
+	ErrBeginFailed = fmt.Errorf("Begin Failed")
+
+	// ErrPriorFailure indicates a failure happened earlier in the Migrator Apply()
+	ErrPriorFailure = fmt.Errorf("Previous error")
+)
+
 // BadQueryer implements the Queryer interface, but fails on every call to
 // Exec or Query. The error message will include the SQL statement to help
 // verify the "right" failure occurred.
@@ -31,8 +39,6 @@ func (bq BadQueryer) Exec(ctx context.Context, sql string, args ...interface{}) 
 func (bq BadQueryer) Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error) {
 	return nil, fmt.Errorf("FAIL: %s", strings.TrimSpace(sql))
 }
-
-var ErrBeginFailed = fmt.Errorf("Begin Failed")
 
 // BadTransactor implements the Connection interface, but fails to Begin any
 // transactions.
