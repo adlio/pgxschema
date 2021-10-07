@@ -25,19 +25,6 @@ func TestApplyWithNilDBProvidesHelpfulError(t *testing.T) {
 		t.Errorf("Expected %v, got %v", ErrNilDB, err)
 	}
 }
-func TestGetAppliedMigrationsErrorsWhenNoneExist(t *testing.T) {
-	withLatestDB(t, func(db *pgxpool.Pool) {
-		migrator := makeTestMigrator()
-		migrations, err := migrator.GetAppliedMigrations(db)
-		if err == nil {
-
-			t.Error("Expected an error. Got  none.")
-		}
-		if len(migrations) > 0 {
-			t.Error("Expected empty list of applied migrations")
-		}
-	})
-}
 
 func TestApplyMultistatementMigrations(t *testing.T) {
 	withEachDB(t, func(db *pgxpool.Pool) {
@@ -365,6 +352,9 @@ func TestSimpleLogger(t *testing.T) {
 	}
 }
 
+// makeTestMigrator is a utility function which produces a migrator with an
+// isolated environment (isolated due to a unique name for the migration
+// tracking table).
 func makeTestMigrator() Migrator {
 	tableName := time.Now().Format(time.RFC3339Nano)
 	return NewMigrator(WithTableName(tableName))
