@@ -177,9 +177,13 @@ go test -v -cover
 
 # Version History
 
-## 0.0.1 (October 7, 2021)
+# 0.0.2 - Nov 18, 2021
 
-- First port from `adlio/schema`
+Security updates to upstream dependencies.
+
+## 0.0.1 - Oct 7, 2021
+
+First port from `adlio/schema`.
 
 # License
 
