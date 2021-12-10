@@ -177,7 +177,11 @@ go test -v -cover
 
 # Version History
 
-# 0.0.2 - Nov 18, 2021
+## 0.0.3 - Dec 10, 2021
+
+Security updates to upstream dependencies.
+
+## 0.0.2 - Nov 18, 2021
 
 Security updates to upstream dependencies.
 
