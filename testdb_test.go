@@ -2,7 +2,7 @@ package pgxschema
 
 import "github.com/ory/dockertest"
 
-type ConnInfo struct {
+type TestDB struct {
 	DockerRepo string
 	DockerTag  string
 	DSN        string

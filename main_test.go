@@ -23,7 +23,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Can't run schema tests. Docker is not running: %s", err)
 	}
 
-	for _, info := range DBConns {
+	for _, info := range TestDBs {
 		// Provision the container
 		info.Resource, err = pool.Run(info.DockerRepo, info.DockerTag, []string{
 			"POSTGRES_USER=postgres",
@@ -62,7 +62,7 @@ func TestMain(m *testing.M) {
 
 	// Purge all the containers we created
 	// You can't defer this because os.Exit doesn't execute defers
-	for _, info := range DBConns {
+	for _, info := range TestDBs {
 		if err := pool.Purge(info.Resource); err != nil {
 			log.Fatalf("Could not purge	resource: %s", err)
 		}
@@ -81,7 +81,7 @@ func withLatestDB(t *testing.T, f func(db *pgxpool.Pool)) {
 // withEachDB runs the provided function with a connection to all PostgreSQL
 // versions defined in the DBConns constant
 func withEachDB(t *testing.T, f func(db *pgxpool.Pool)) {
-	for dbName := range DBConns {
+	for dbName := range TestDBs {
 		t.Run(dbName, func(t *testing.T) {
 			db := connectDB(t, dbName)
 			f(db)
@@ -92,7 +92,7 @@ func withEachDB(t *testing.T, f func(db *pgxpool.Pool)) {
 // connectDB opens a connection to the PostgreSQL docker container with the
 // provided key name.
 func connectDB(t *testing.T, name string) *pgxpool.Pool {
-	info, exists := DBConns[name]
+	info, exists := TestDBs[name]
 	if !exists {
 		t.Errorf("Database '%s' doesn't exist.", name)
 	}

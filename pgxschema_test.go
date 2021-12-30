@@ -1,9 +1,6 @@
 package pgxschema
 
 import (
-
-	// Postgres database driver
-
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
@@ -30,7 +27,9 @@ var (
 	_ Queryer = pgx.Tx(nil)
 )
 
-var DBConns = map[string]*ConnInfo{
+// TestDBs holds all of the specific database instances against which tests
+// will run.
+var TestDBs = map[string]*TestDB{
 	"postgres11": {
 		DockerRepo: "postgres",
 		DockerTag:  "11",
