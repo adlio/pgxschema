@@ -30,12 +30,16 @@ var (
 // TestDBs holds all of the specific database instances against which tests
 // will run.
 var TestDBs = map[string]*TestDB{
-	"postgres11": {
+	"postgres:11": {
 		DockerRepo: "postgres",
 		DockerTag:  "11",
 	},
-	"postgres13": {
+	"postgres:12": {
 		DockerRepo: "postgres",
-		DockerTag:  "13",
+		DockerTag:  "12",
+	},
+	"postgres:latest": {
+		DockerRepo: "postgres",
+		DockerTag:  "latest",
 	},
 }

@@ -123,7 +123,7 @@ func TestApplyInLexicalOrder(t *testing.T) {
 	})
 }
 func TestFailedMigration(t *testing.T) {
-	db := connectDB(t, "postgres11")
+	db := connectDB(t, "postgres:11")
 	migrator := makeTestMigrator()
 	migrations := []*Migration{
 		{
@@ -171,7 +171,7 @@ func TestSimultaneousApply(t *testing.T) {
 	for i := 0; i < concurrency; i++ {
 		wg.Add(1)
 		go func(i int) {
-			db := connectDB(t, "postgres11")
+			db := connectDB(t, "postgres:11")
 			migrator := NewMigrator(WithTableName(migrationsTable))
 			err := migrator.Apply(db, sharedMigrations)
 			if err != nil {
@@ -190,7 +190,7 @@ func TestSimultaneousApply(t *testing.T) {
 	// (1 from the migration, and one each for the
 	// goroutines which ran Apply and then did an
 	// insert afterwards)
-	db := connectDB(t, "postgres11")
+	db := connectDB(t, "postgres:11")
 	count := 0
 	row := db.QueryRow(context.Background(), fmt.Sprintf("SELECT COUNT(*) FROM %s", dataTable))
 	err := row.Scan(&count)
@@ -236,7 +236,7 @@ func TestBeginTxFailure(t *testing.T) {
 }
 
 func TestLockAndUnlockSuccess(t *testing.T) {
-	withLatestDB(t, func(db *pgxpool.Pool) {
+	withEachDB(t, func(db *pgxpool.Pool) {
 		m := makeTestMigrator()
 		m.lock(db)
 		if m.err != nil {
