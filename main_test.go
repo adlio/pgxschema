@@ -75,7 +75,7 @@ func connectDB(t *testing.T, name string) *pgxpool.Pool {
 	}
 	db, err := pgxpool.Connect(context.Background(), info.DSN())
 	if err != nil {
-		t.Error(err)
+		t.Fatalf("Failed to connect to %s: %s", name, err)
 	}
 	return db
 }
