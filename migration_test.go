@@ -17,35 +17,38 @@ func TestMD5(t *testing.T) {
 }
 
 func TestSortMigrations(t *testing.T) {
-	migrations := makeValidUnorderedMigrations()
-	expectedFirst := "2021-01-01 001"
-	expectedSecond := "2021-01-01 002"
-	expectedThird := "2021-01-01 003"
-
-	// First we test that the unordered set is unordered in the way
-	// we expect. The valid migrations come out in 2,1,3 order before sorting.
-	if migrations[0].ID != expectedSecond {
-		t.Errorf("Expected migrations[0].ID = '%s' before sorting. Got '%s'.", expectedSecond, migrations[0].ID)
+	migrations := []*Migration{
+		{ID: "2020-01-01"},
+		{ID: "2021-01-01"},
+		{ID: "2000-01-01"},
 	}
-	if migrations[1].ID != expectedFirst {
-		t.Errorf("Expected migrations[1].ID = '%s' before sorting. Got '%s'.", expectedFirst, migrations[1].ID)
-	}
-	if migrations[2].ID != expectedThird {
-		t.Errorf("Expected migrations[2].ID = '%s' before sorting. Got '%s'.", expectedThird, migrations[2].ID)
-	}
-
-	// Then we sort the slice
+	expectedOrder := []string{"2000-01-01", "2020-01-01", "2021-01-01"}
 	SortMigrations(migrations)
+	for i, migration := range migrations {
+		if migration.ID != expectedOrder[i] {
+			t.Errorf("Expected migration #%d to be %s, got %s", i, expectedOrder[i], migration.ID)
+		}
+	}
+}
 
-	// Then we assert the order was changed as we expect
-	if migrations[0].ID != expectedFirst {
-		t.Errorf("Expected migrations[0].ID = '%s'. Got '%s'.", expectedFirst, migrations[0].ID)
-	}
-	if migrations[1].ID != expectedSecond {
-		t.Errorf("Expected migrations[1].ID = '%s'. Got '%s'.", expectedSecond, migrations[1].ID)
-	}
-	if migrations[2].ID != expectedThird {
-		t.Errorf("Expected migrations[2].ID = '%s'. Got '%s'.", expectedThird, migrations[2].ID)
+func unorderedMigrations() []*Migration {
+	return []*Migration{
+		{
+			ID: "2021-01-01 002",
+			Script: `CREATE TABLE data_table (
+				id INTEGER PRIMARY KEY,
+				name VARCHAR(255),
+				created_at TIMESTAMP
+			)`,
+		},
+		{
+			ID:     "2021-01-01 001",
+			Script: "CREATE TABLE first_table (first_name VARCHAR(255), last_name VARCHAR(255))",
+		},
+		{
+			ID:     "2021-01-01 003",
+			Script: `INSERT INTO first_table (first_name, last_name) VALUES ('John', 'Doe')`,
+		},
 	}
 }
 
