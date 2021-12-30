@@ -48,16 +48,18 @@ func TestMain(m *testing.M) {
 // version of PostgreSQL
 func withLatestDB(t *testing.T, f func(db *pgxpool.Pool)) {
 	db := connectDB(t, "postgres:latest")
+	defer db.Close()
 	f(db)
 }
 
 // withEachDB runs the provided function with a connection to all PostgreSQL
-// versions defined in the DBConns constant
+// versions defined in the TestDBs map
 func withEachDB(t *testing.T, f func(db *pgxpool.Pool)) {
 	t.Helper()
 	for dbName := range TestDBs {
 		t.Run(dbName, func(t *testing.T) {
 			db := connectDB(t, dbName)
+			defer db.Close()
 			f(db)
 		})
 	}
