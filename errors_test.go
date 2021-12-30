@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"testing"
 
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
@@ -44,4 +45,13 @@ func (bt BadTransactor) Exec(ctx context.Context, sql string, args ...interface{
 
 func (bt BadTransactor) Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error) {
 	return nil, nil
+}
+
+func expectErrorContains(t *testing.T, err error, contains string) {
+	t.Helper()
+	if err == nil {
+		t.Errorf("Expected an error string containing '%s', got nil", contains)
+	} else if !strings.Contains(err.Error(), contains) {
+		t.Errorf("Expected an error string containing '%s', got '%s' instead", contains, err.Error())
+	}
 }

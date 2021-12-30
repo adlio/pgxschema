@@ -1,6 +1,9 @@
 package pgxschema
 
-import "testing"
+import (
+	"regexp"
+	"testing"
+)
 
 func TestMD5(t *testing.T) {
 	m := Migration{
@@ -43,5 +46,23 @@ func TestSortMigrations(t *testing.T) {
 	}
 	if migrations[2].ID != expectedThird {
 		t.Errorf("Expected migrations[2].ID = '%s'. Got '%s'.", expectedThird, migrations[2].ID)
+	}
+}
+
+func expectID(t *testing.T, migration *Migration, expectedID string) {
+	t.Helper()
+	if migration.ID != expectedID {
+		t.Errorf("Expected Migration to have ID '%s', got '%s' instead", expectedID, migration.ID)
+	}
+}
+
+func expectScriptMatch(t *testing.T, migration *Migration, regexpString string) {
+	t.Helper()
+	re, err := regexp.Compile(regexpString)
+	if err != nil {
+		t.Fatalf("Invalid regexp: '%s': %s", regexpString, err)
+	}
+	if !re.MatchString(migration.Script) {
+		t.Errorf("Expected migration Script to match '%s', but it did not. Script was:\n%s", regexpString, migration.Script)
 	}
 }
