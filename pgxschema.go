@@ -5,7 +5,12 @@ import (
 
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 )
+
+type DB interface {
+	Acquire(ctx context.Context) (conn *pgxpool.Conn, err error)
+}
 
 // Connection defines the interface for either a *pgxpool.Pool or a *pgx.Conn,
 // both of which can start new transactions and execute queries.

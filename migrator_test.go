@@ -5,13 +5,193 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 )
+
+// TestCreateMigrationsTable ensures that each test datbase can
+// successfully create the schema_migrations table.
+func TestCreateMigrationsTable(t *testing.T) {
+	withEachDB(t, func(db *pgxpool.Pool) {
+		migrator := makeTestMigrator()
+		err := migrator.createMigrationsTable(db)
+		if err != nil {
+			t.Errorf("Error occurred when creating migrations table: %s", err)
+		}
+
+		// Test that we can re-run it safely
+		err = migrator.createMigrationsTable(db)
+		if err != nil {
+			t.Errorf("Calling createMigrationsTable a second time failed: %s", err)
+		}
+	})
+}
+
+// TestLockAndUnlock tests the Lock and Unlock mechanisms of each
+// test database in isolation from any migrations actually being run.
+func TestLockAndUnlock(t *testing.T) {
+	withEachDB(t, func(db *pgxpool.Pool) {
+		m := makeTestMigrator()
+		err := m.lock(db)
+		if err != nil {
+			t.Error(err)
+		}
+		err = m.unlock(db)
+		if err != nil {
+			t.Error(err)
+		}
+	})
+}
+
+// TestApplyInLexicalOrder ensures that each test database runs migrations in
+// lexical order rather than the order they were provided in the slice. This is
+// also the primary test to assert that the data in the tracking table is
+// all correct.
+func TestApplyInLexicalOrder(t *testing.T) {
+	withEachDB(t, func(db *pgxpool.Pool) {
+
+		start := time.Now().Truncate(time.Second) // MySQL has only second accuracy, so we need start/end to span 1 second
+
+		tableName := "lexical_order_migrations"
+		migrator := NewMigrator(WithTableName(tableName))
+		err := migrator.Apply(db, unorderedMigrations())
+		if err != nil {
+			t.Error(err)
+		}
+
+		end := time.Now().Add(time.Second).Truncate(time.Second) // MySQL has only second accuracy, so we need start/end to span 1 second
+
+		applied, err := migrator.GetAppliedMigrations(db)
+		if err != nil {
+			t.Error(err)
+		}
+		if len(applied) != 3 {
+			t.Errorf("Expected exactly 2 applied migrations. Got %d", len(applied))
+		}
+
+		firstMigration := applied["2021-01-01 001"]
+		if firstMigration == nil {
+			t.Fatal("Missing first migration")
+		}
+		if firstMigration.Checksum == "" {
+			t.Error("Expected non-blank Checksum value after successful migration")
+		}
+		if firstMigration.ExecutionTimeInMillis < 1 {
+			t.Errorf("Expected ExecutionTimeInMillis of %s to be tracked. Got %d", firstMigration.ID, firstMigration.ExecutionTimeInMillis)
+		}
+		// Put value in consistent timezone to aid error message readability
+		appliedAt := firstMigration.AppliedAt.Round(time.Second)
+		if appliedAt.IsZero() || appliedAt.Before(start) || appliedAt.After(end) {
+			t.Errorf("Expected AppliedAt between %s and %s, got %s", start, end, appliedAt)
+		}
+		assertZonesMatch(t, start, appliedAt)
+
+		secondMigration := applied["2021-01-01 002"]
+		if secondMigration == nil {
+			t.Fatal("Missing second migration")
+		} else if secondMigration.Checksum == "" {
+			t.Fatal("Expected checksum to get populated when migration ran")
+		}
+
+		if firstMigration.AppliedAt.After(secondMigration.AppliedAt) {
+			t.Errorf("Expected migrations to run in lexical order, but first migration ran at %s and second one ran at %s", firstMigration.AppliedAt, secondMigration.AppliedAt)
+		}
+	})
+}
+
+// TestFailedMigration ensures that a migration with a syntax error triggers
+// an expected error when Apply() is run. This test is run on every test database
+func TestFailedMigration(t *testing.T) {
+	withEachDB(t, func(db *pgxpool.Pool) {
+		tableName := time.Now().Format(time.RFC3339Nano)
+		migrator := NewMigrator(WithTableName(tableName))
+		migrations := []*Migration{
+			{
+				ID:     "2019-01-01 Bad Migration",
+				Script: "CREATE TIBBLE bad_table_name (id INTEGER NOT NULL PRIMARY KEY)",
+			},
+		}
+		err := migrator.Apply(db, migrations)
+		expectErrorContains(t, err, "TIBBLE")
+
+		query := "SELECT * FROM " + migrator.QuotedTableName()
+		rows, _ := db.Query(context.Background(), query)
+		defer rows.Close()
+
+		// We expect either an error (because the transaction was rolled back
+		// and the table no longer exists)... or  a query with no results
+		if rows != nil {
+			if rows.Next() {
+				t.Error("Record was inserted in tracking table even though the migration failed")
+			}
+		}
+	})
+}
+
+// TestSimultaneousApply creates multiple Migrators and multiple distinct
+// connections to each test database and attempts to call .Apply() on them all
+// concurrently. The migrations include an INSERT statement, which allows us
+// to count to ensure that each unique migration was only run once.
+//
+func TestSimultaneousApply(t *testing.T) {
+	concurrency := 4
+	dataTable := fmt.Sprintf("data%d", rand.Int()) // #nosec don't need a strong RNG here
+	migrationsTable := fmt.Sprintf("Migrations %s", time.Now().Format(time.RFC3339Nano))
+	sharedMigrations := []*Migration{
+		{
+			ID:     "2020-05-01 Sleep",
+			Script: "SELECT pg_sleep(1)",
+		},
+		{
+			ID: "2020-05-02 Create Data Table",
+			Script: fmt.Sprintf(`CREATE TABLE %s (
+				id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+				created_at TIMESTAMP WITH TIME ZONE NOT NULL
+			)`, dataTable),
+		},
+		{
+			ID:     "2020-05-03 Add Initial Record",
+			Script: fmt.Sprintf(`INSERT INTO %s (created_at) VALUES (NOW())`, dataTable),
+		},
+	}
+
+	var wg sync.WaitGroup
+	for i := 0; i < concurrency; i++ {
+		wg.Add(1)
+		go func(i int) {
+			db := connectDB(t, "postgres:latest")
+			migrator := NewMigrator(WithTableName(migrationsTable))
+			err := migrator.Apply(db, sharedMigrations)
+			if err != nil {
+				t.Error(err)
+			}
+			_, err = db.Exec(context.Background(), fmt.Sprintf("INSERT INTO %s (created_at) VALUES (NOW())", dataTable))
+			if err != nil {
+				t.Error(err)
+			}
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
+
+	// We expect concurrency + 1 rows in the data table
+	// (1 from the migration, and one each for the
+	// goroutines which ran Apply and then did an
+	// insert afterwards)
+	db := connectDB(t, "postgres:latest")
+	count := 0
+	row := db.QueryRow(context.Background(), fmt.Sprintf("SELECT COUNT(*) FROM %s", dataTable))
+	err := row.Scan(&count)
+	if err != nil {
+		t.Error(err)
+	}
+	if count != concurrency+1 {
+		t.Errorf("Expected to get %d rows in %s table. Instead got %d", concurrency+1, dataTable, count)
+	}
+}
 
 func TestApplyWithNilDBProvidesHelpfulError(t *testing.T) {
 	m := NewMigrator()
@@ -74,283 +254,6 @@ func TestApplyMultistatementMigrations(t *testing.T) {
 		}
 	})
 }
-func TestApplyInLexicalOrder(t *testing.T) {
-	withLatestDB(t, func(db *pgxpool.Pool) {
-		migrator := makeTestMigrator()
-		outOfOrderMigrations := []*Migration{
-			{
-				ID:     "2019-01-01 999 Should Run Last",
-				Script: "CREATE TABLE last_table (id INTEGER NOT NULL);",
-			},
-			{
-				ID:     "2019-01-01 001 Should Run First",
-				Script: "CREATE TABLE first_table (id INTEGER NOT NULL);",
-			},
-		}
-		err := migrator.Apply(db, outOfOrderMigrations)
-		if err != nil {
-			t.Error(err)
-		}
-
-		applied, err := migrator.GetAppliedMigrations(db)
-		if err != nil {
-			t.Error(err)
-		}
-		if len(applied) != 2 {
-			t.Errorf("Expected exactly 2 applied migrations. Got %d", len(applied))
-		}
-		firstMigration := applied["2019-01-01 001 Should Run First"]
-		if firstMigration == nil {
-			t.Error("Missing first migration")
-		} else {
-			if firstMigration.Checksum == "" {
-				t.Error("Expected checksum to get populated when migration ran")
-			}
-
-			secondMigration := applied["2019-01-01 999 Should Run Last"]
-			if secondMigration == nil {
-				t.Error("Missing second migration")
-			} else {
-				if secondMigration.Checksum == "" {
-					t.Error("Expected checksum to get populated when migration ran")
-				}
-
-				if firstMigration.AppliedAt.After(secondMigration.AppliedAt) {
-					t.Errorf("Expected migrations to run in lexical order, but first migration ran at %s and second one ran at %s", firstMigration.AppliedAt, secondMigration.AppliedAt)
-				}
-			}
-		}
-	})
-}
-func TestFailedMigration(t *testing.T) {
-	db := connectDB(t, "postgres:11")
-	migrator := makeTestMigrator()
-	migrations := []*Migration{
-		{
-			ID:     "2019-01-01 Bad Migration",
-			Script: "CREATE TIBBLE bad_table_name (id INTEGER NOT NULL PRIMARY KEY)",
-		},
-	}
-	err := migrator.Apply(db, migrations)
-	if err == nil || !strings.Contains(err.Error(), "TIBBLE") {
-		t.Errorf("Expected explanatory error from failed migration. Got %v", err)
-	}
-	quotedTableName := QuotedTableName(migrator.schemaName, migrator.tableName)
-	rows, err := db.Query(context.Background(), "SELECT * FROM "+quotedTableName)
-	if err == nil || !strings.Contains(err.Error(), "does not exist") {
-		t.Error("Expected the schema table to not exist")
-	}
-	if rows.Next() {
-		t.Error("Record was inserted in tracking table even though the migration failed")
-	}
-	rows.Close()
-}
-func TestSimultaneousApply(t *testing.T) {
-	concurrency := 4
-	dataTable := fmt.Sprintf("data%d", rand.Int()) // #nosec don't need a strong RNG here
-	migrationsTable := fmt.Sprintf("Migrations %s", time.Now().Format(time.RFC3339Nano))
-	sharedMigrations := []*Migration{
-		{
-			ID:     "2020-05-01 Sleep",
-			Script: "SELECT pg_sleep(1)",
-		},
-		{
-			ID: "2020-05-02 Create Data Table",
-			Script: fmt.Sprintf(`CREATE TABLE %s (
-				id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
-				created_at TIMESTAMP WITH TIME ZONE NOT NULL
-			)`, dataTable),
-		},
-		{
-			ID:     "2020-05-03 Add Initial Record",
-			Script: fmt.Sprintf(`INSERT INTO %s (created_at) VALUES (NOW())`, dataTable),
-		},
-	}
-
-	var wg sync.WaitGroup
-	for i := 0; i < concurrency; i++ {
-		wg.Add(1)
-		go func(i int) {
-			db := connectDB(t, "postgres:11")
-			migrator := NewMigrator(WithTableName(migrationsTable))
-			err := migrator.Apply(db, sharedMigrations)
-			if err != nil {
-				t.Error(err)
-			}
-			_, err = db.Exec(context.Background(), fmt.Sprintf("INSERT INTO %s (created_at) VALUES (NOW())", dataTable))
-			if err != nil {
-				t.Error(err)
-			}
-			wg.Done()
-		}(i)
-	}
-	wg.Wait()
-
-	// We expect concurrency + 1 rows in the data table
-	// (1 from the migration, and one each for the
-	// goroutines which ran Apply and then did an
-	// insert afterwards)
-	db := connectDB(t, "postgres:11")
-	count := 0
-	row := db.QueryRow(context.Background(), fmt.Sprintf("SELECT COUNT(*) FROM %s", dataTable))
-	err := row.Scan(&count)
-	if err != nil {
-		t.Error(err)
-	}
-	if count != concurrency+1 {
-		t.Errorf("Expected to get %d rows in %s table. Instead got %d", concurrency+1, dataTable, count)
-	}
-
-}
-
-func TestCommitOrRollbackRecoversErrorPanic(t *testing.T) {
-	m := makeTestMigrator()
-	defer func() {
-		if m.err != ErrPriorFailure {
-			t.Errorf("Expected error '%v'. Got '%v'.", ErrPriorFailure, m.err)
-		}
-	}()
-	defer m.commitOrRollback(nil)
-	panic(ErrPriorFailure)
-}
-
-func TestCommitOrRollbackRecoversNakedPanic(t *testing.T) {
-	m := makeTestMigrator()
-	defer func() {
-		expectedContents := "Runtime error"
-		if m.err.Error() != expectedContents {
-			t.Errorf("Expected error '%v'. Got '%v'.", expectedContents, m.err)
-		}
-	}()
-	defer m.commitOrRollback(nil)
-	panic("Runtime error")
-}
-
-func TestBeginTxFailure(t *testing.T) {
-	m := makeTestMigrator()
-	bt := BadTransactor{}
-	_ = m.beginTx(bt)
-	if !errors.Is(m.err, ErrBeginFailed) {
-		t.Errorf("Expected error '%v'. Got '%v'.", ErrBeginFailed, m.err)
-	}
-}
-
-func TestLockAndUnlockSuccess(t *testing.T) {
-	withEachDB(t, func(db *pgxpool.Pool) {
-		m := makeTestMigrator()
-		m.lock(db)
-		if m.err != nil {
-			t.Error(m.err)
-		}
-		m.unlock(db)
-		if m.err != nil {
-			t.Error(m.err)
-		}
-	})
-}
-
-func TestLockFailure(t *testing.T) {
-	bq := BadQueryer{}
-	m := makeTestMigrator()
-	m.lock(bq)
-	expectedContents := "FAIL: SELECT pg_advisory_lock"
-	if m.err == nil || !strings.Contains(m.err.Error(), expectedContents) {
-		t.Errorf("Expected error msg with '%s'. Got '%s'", expectedContents, m.err)
-	}
-
-	m.err = ErrPriorFailure
-	m.lock(bq)
-	if m.err != ErrPriorFailure {
-		t.Errorf("Expected error %v. Got %v", ErrPriorFailure, m.err)
-	}
-}
-
-func TestUnlockFailure(t *testing.T) {
-	bq := BadQueryer{}
-	m := makeTestMigrator()
-	m.unlock(bq)
-	expectedContents := "FAIL: SELECT pg_advisory_unlock"
-	if m.err == nil || !strings.Contains(m.err.Error(), expectedContents) {
-		t.Errorf("Expected error msg with '%s'. Got '%v'", expectedContents, m.err)
-	}
-
-	m.err = ErrPriorFailure
-	m.unlock(bq)
-	if m.err != ErrPriorFailure {
-		t.Errorf("Expected error %v. Got %v.", ErrPriorFailure, m.err)
-	}
-}
-
-func TestCreateMigrationsTable(t *testing.T) {
-	withEachDB(t, func(db *pgxpool.Pool) {
-		migrator := makeTestMigrator()
-		migrator.createMigrationsTable(db)
-		if migrator.err != nil {
-			t.Errorf("Error occurred when creating migrations table: %s", migrator.err)
-		}
-
-		// Test that we can re-run it safely
-		migrator.createMigrationsTable(db)
-		if migrator.err != nil {
-			t.Errorf("Calling createMigrationsTable a second time failed: %s", migrator.err)
-		}
-	})
-}
-func TestCreateMigrationsTableFailure(t *testing.T) {
-	m := makeTestMigrator()
-	bq := BadQueryer{}
-	m.err = ErrPriorFailure
-	m.createMigrationsTable(bq)
-	if m.err != ErrPriorFailure {
-		t.Errorf("Expected error %v. Got %v.", ErrPriorFailure, m.err)
-	}
-}
-
-func TestComputeMigrationPlanFailure(t *testing.T) {
-	bq := BadQueryer{}
-	m := makeTestMigrator()
-	_, err := m.computeMigrationPlan(bq, []*Migration{})
-	expectedContents := "FAIL: SELECT id, checksum, execution_time_in_millis, applied_at"
-	if err == nil || !strings.Contains(err.Error(), expectedContents) {
-		t.Errorf("Expected error msg with '%s'. Got '%v'.", expectedContents, err)
-	}
-}
-
-func TestRunFailure(t *testing.T) {
-	bq := BadQueryer{}
-	m := makeTestMigrator()
-	m.run(bq, makeValidUnorderedMigrations())
-	expectedContents := "FAIL: SELECT id, checksum"
-	if m.err == nil || !strings.Contains(m.err.Error(), expectedContents) {
-		t.Errorf("Expected error msg with '%s'. Got '%v'.", expectedContents, m.err)
-	}
-
-	m.err = ErrPriorFailure
-	m.run(bq, makeValidUnorderedMigrations())
-	if m.err != ErrPriorFailure {
-		t.Errorf("Expected error %v. Got %v.", ErrPriorFailure, m.err)
-	}
-}
-
-type StrLog string
-
-func (nl *StrLog) Print(msgs ...interface{}) {
-	var sb strings.Builder
-	for _, msg := range msgs {
-		sb.WriteString(fmt.Sprintf("%s", msg))
-	}
-	result := StrLog(sb.String())
-	*nl = result
-}
-
-func TestSimpleLogger(t *testing.T) {
-	var str StrLog
-	m := NewMigrator(WithLogger(&str))
-	m.log("Test message")
-	if str != "Test message" {
-		t.Errorf("Expected logger to print 'Test message'. Got '%s'", str)
-	}
-}
 
 // makeTestMigrator is a utility function which produces a migrator with an
 // isolated environment (isolated due to a unique name for the migration
@@ -360,22 +263,13 @@ func makeTestMigrator() Migrator {
 	return NewMigrator(WithTableName(tableName))
 }
 
-func makeValidUnorderedMigrations() []*Migration {
-	return []*Migration{
-		{
-			ID: "2021-01-01 002",
-			Script: `CREATE TABLE data_table (
-				id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
-				created_at TIMESTAMP WITH TIME ZONE NOT NULL
-			)`,
-		},
-		{
-			ID:     "2021-01-01 001",
-			Script: "CREATE TABLE first_table (created_at TIMESTAMP WITH TIME ZONE NOT NULL)",
-		},
-		{
-			ID:     "2021-01-01 003",
-			Script: `INSERT INTO data_table (created_at) VALUES (NOW())`,
-		},
+// assertZonesMatch accepts two Times and fails the test if their time zones
+// don't match.
+func assertZonesMatch(t *testing.T, expected, actual time.Time) {
+	t.Helper()
+	expectedName, expectedOffset := expected.Zone()
+	actualName, actualOffset := actual.Zone()
+	if expectedOffset != actualOffset {
+		t.Errorf("Expected Zone '%s' with offset %d. Got Zone '%s' with offset %d", expectedName, expectedOffset, actualName, actualOffset)
 	}
 }

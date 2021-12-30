@@ -4,8 +4,6 @@ import (
 	"context" // #nosec MD5 not being used cryptographically
 	"fmt"
 	"time"
-
-	"github.com/jackc/pgx/v4"
 )
 
 // DefaultTableName defines the name of the database table which will
@@ -37,10 +35,6 @@ type Migrator struct {
 
 	// ctx holds the context in which the migrator is running.
 	ctx context.Context
-
-	// err holds the last error which occurred at any step of the migration
-	// process
-	err error
 }
 
 // NewMigrator creates a new Migrator with the supplied
@@ -57,50 +51,73 @@ func NewMigrator(options ...Option) Migrator {
 	return m
 }
 
+// QuotedTableName returns the dialect-quoted fully-qualified name for the
+// migrations tracking table
+func (m *Migrator) QuotedTableName() string {
+	return QuotedTableName(m.schemaName, m.tableName)
+}
+
 // Apply takes a slice of Migrations and applies any which have not yet
 // been applied
-func (m *Migrator) Apply(db Connection, migrations []*Migration) error {
+func (m *Migrator) Apply(db DB, migrations []*Migration) error {
 	if db == nil {
 		return ErrNilDB
 	}
 
-	m.err = nil
-	tx := m.beginTx(db)
-	m.lock(tx)
-	defer m.unlock(tx)           // ... ensure we unlock even if errors occurred
-	defer m.commitOrRollback(tx) // ... ensure we commit or rollback when done
-	m.createMigrationsTable(tx)
-	m.run(tx, migrations)
-	return m.err
-}
+	if len(migrations) == 0 {
+		return nil
+	}
 
-func (m *Migrator) beginTx(db Transactor) pgx.Tx {
-	tx, err := db.Begin(m.ctx)
+	if m.ctx == nil {
+		m.ctx = context.Background()
+	}
+
+	// Obtain a concrete connection to the database which will be closed
+	// at the conclusion of Apply()
+	conn, err := db.Acquire(m.ctx)
 	if err != nil {
-		m.err = fmt.Errorf("failed to begin transaction: %w", err)
+		return err
 	}
-	return tx
+	defer conn.Release()
+
+	err = m.lock(conn)
+	if err != nil {
+		return err
+	}
+	defer func() { err = coalesceErrs(err, m.unlock(conn)) }()
+
+	tx, err := conn.Begin(m.ctx)
+	if err != nil {
+		return err
+	}
+
+	err = m.createMigrationsTable(tx)
+	if err != nil {
+		_ = tx.Rollback(m.ctx)
+		return err
+	}
+
+	err = m.run(tx, migrations)
+	if err != nil {
+		_ = tx.Rollback(m.ctx)
+		return err
+	}
+
+	err = tx.Commit(m.ctx)
+
+	return err
 }
 
-func (m *Migrator) lock(db Queryer) {
-	if m.err != nil {
-		// Abort if Migrator already had an error
-		return
-	}
+func (m *Migrator) lock(db Queryer) error {
 	query := fmt.Sprintf(`SELECT pg_advisory_lock(%d)`, m.lockID)
 	_, err := db.Exec(m.ctx, query)
 	if err == nil {
 		m.log("Locked at ", time.Now().Format(time.RFC3339Nano))
-	} else {
-		m.err = err
 	}
+	return err
 }
 
-func (m *Migrator) createMigrationsTable(tx Queryer) {
-	if m.err != nil {
-		// Abort if Migrator already had an error
-		return
-	}
+func (m *Migrator) createMigrationsTable(tx Queryer) error {
 	tn := QuotedTableName(m.schemaName, m.tableName)
 	query := fmt.Sprintf(`
 				CREATE TABLE IF NOT EXISTS %s (
@@ -110,37 +127,37 @@ func (m *Migrator) createMigrationsTable(tx Queryer) {
 					applied_at TIMESTAMP WITH TIME ZONE NOT NULL
 				)
 			`, tn)
-	_, m.err = tx.Exec(m.ctx, query)
+	_, err := tx.Exec(m.ctx, query)
+	return err
 }
 
-func (m *Migrator) unlock(db Queryer) {
+func (m *Migrator) unlock(db Queryer) error {
 	query := fmt.Sprintf(`SELECT pg_advisory_unlock(%d)`, m.lockID)
 	_, err := db.Exec(m.ctx, query)
 	if err == nil {
 		m.log("Unlocked at ", time.Now().Format(time.RFC3339Nano))
-	} else if m.err == nil {
-		// Don't overwrite an earlier error with an unlock error
-		m.err = err
 	}
+	return err
 }
 
-func (m *Migrator) run(tx Queryer, migrations []*Migration) {
-	if m.err != nil {
-		// Abort if Migrator already had an error
-		return
+func (m *Migrator) run(tx Queryer, migrations []*Migration) error {
+	if tx == nil {
+		return ErrNilDB
 	}
-	var plan []*Migration
-	plan, m.err = m.computeMigrationPlan(tx, migrations)
-	if m.err != nil {
-		return
+
+	plan, err := m.computeMigrationPlan(tx, migrations)
+	if err != nil {
+		return err
 	}
+
 	for _, migration := range plan {
 		err := m.runMigration(tx, migration)
 		if err != nil {
-			m.err = err
-			return
+			return err
 		}
 	}
+
+	return nil
 }
 
 func (m *Migrator) computeMigrationPlan(db Queryer, toRun []*Migration) (plan []*Migration, err error) {
@@ -181,26 +198,17 @@ func (m *Migrator) runMigration(tx Queryer, migration *Migration) error {
 	return err
 }
 
-func (m *Migrator) commitOrRollback(tx pgx.Tx) {
-	if e := recover(); e != nil {
-		switch e := e.(type) {
-		case error:
-			m.err = e
-		default:
-			m.err = fmt.Errorf("%s", e)
-		}
-	}
-	if tx != nil {
-		if m.err != nil {
-			_ = tx.Rollback(m.ctx)
-		} else {
-			m.err = tx.Commit(m.ctx)
-		}
-	}
-}
-
 func (m *Migrator) log(msgs ...interface{}) {
 	if m.Logger != nil {
 		m.Logger.Print(msgs...)
 	}
+}
+
+func coalesceErrs(errs ...error) error {
+	for _, err := range errs {
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -2,8 +2,10 @@ package pgxschema
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -51,17 +53,6 @@ func TestDefaultTableName(t *testing.T) {
 	}
 }
 
-func TestWithLoggerOption(t *testing.T) {
-	m := Migrator{}
-	if m.Logger != nil {
-		t.Errorf("Expected nil Logger by default. Got '%v'", m.Logger)
-	}
-	modifiedMigrator := WithLogger(log.New(os.Stdout, "schema: ", log.Ldate|log.Ltime))(m)
-	if modifiedMigrator.Logger == nil {
-		t.Errorf("Expected logger to have been added")
-	}
-}
-
 type testCtxKey int
 
 const KeyFoo testCtxKey = iota
@@ -79,5 +70,36 @@ func TestWithContextOption(t *testing.T) {
 	val := modifiedMigrator.ctx.Value(KeyFoo)
 	if val.(string) != "123456" {
 		t.Error("Context didn't contain expected value")
+	}
+}
+
+func TestWithLoggerOption(t *testing.T) {
+	m := Migrator{}
+	if m.Logger != nil {
+		t.Errorf("Expected nil Logger by default. Got '%v'", m.Logger)
+	}
+	modifiedMigrator := WithLogger(log.New(os.Stdout, "schema: ", log.Ldate|log.Ltime))(m)
+	if modifiedMigrator.Logger == nil {
+		t.Errorf("Expected logger to have been added")
+	}
+}
+
+type StrLog string
+
+func (nl *StrLog) Print(msgs ...interface{}) {
+	var sb strings.Builder
+	for _, msg := range msgs {
+		sb.WriteString(fmt.Sprintf("%s", msg))
+	}
+	result := StrLog(sb.String())
+	*nl = result
+}
+
+func TestSimpleLogger(t *testing.T) {
+	var str StrLog
+	m := NewMigrator(WithLogger(&str))
+	m.log("Test message")
+	if str != "Test message" {
+		t.Errorf("Expected logger to print 'Test message'. Got '%s'", str)
 	}
 }
