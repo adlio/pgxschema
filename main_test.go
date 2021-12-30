@@ -12,24 +12,6 @@ import (
 	"github.com/ory/dockertest"
 )
 
-type ConnInfo struct {
-	DockerRepo string
-	DockerTag  string
-	DSN        string
-	Resource   *dockertest.Resource
-}
-
-var DBConns = map[string]*ConnInfo{
-	"postgres11": {
-		DockerRepo: "postgres",
-		DockerTag:  "11",
-	},
-	"postgres13": {
-		DockerRepo: "postgres",
-		DockerTag:  "13",
-	},
-}
-
 // TestMain replaces the normal test runner for this package. It connects to
 // Docker running on the local machine and launches testing database
 // containers to which we then connect and store the connection in a package

@@ -29,3 +29,14 @@ var (
 	_ Queryer = &pgxpool.Pool{}
 	_ Queryer = pgx.Tx(nil)
 )
+
+var DBConns = map[string]*ConnInfo{
+	"postgres11": {
+		DockerRepo: "postgres",
+		DockerTag:  "11",
+	},
+	"postgres13": {
+		DockerRepo: "postgres",
+		DockerTag:  "13",
+	},
+}
