@@ -2,7 +2,6 @@ package pgxschema
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/rand"
 	"sync"
@@ -193,19 +192,6 @@ func TestSimultaneousApply(t *testing.T) {
 	}
 }
 
-func TestApplyWithNilDBProvidesHelpfulError(t *testing.T) {
-	m := NewMigrator()
-	err := m.Apply(nil, []*Migration{
-		{
-			ID:     "2019-01-01 Test",
-			Script: "CREATE TABLE fake_table (id INTEGER)",
-		},
-	})
-	if !errors.Is(err, ErrNilDB) {
-		t.Errorf("Expected %v, got %v", ErrNilDB, err)
-	}
-}
-
 func TestApplyMultistatementMigrations(t *testing.T) {
 	withEachDB(t, func(db *pgxpool.Pool) {
 		migrator := makeTestMigrator()
@@ -261,6 +247,15 @@ func TestApplyMultistatementMigrations(t *testing.T) {
 func makeTestMigrator() Migrator {
 	tableName := time.Now().Format(time.RFC3339Nano)
 	return NewMigrator(WithTableName(tableName))
+}
+
+func testMigrations(t *testing.T, dirName string) []*Migration {
+	path := fmt.Sprintf("test-migrations/%s", dirName)
+	migrations, err := MigrationsFromDirectoryPath(path)
+	if err != nil {
+		t.Fatalf("Failed to load test migrations from '%s'", path)
+	}
+	return migrations
 }
 
 // assertZonesMatch accepts two Times and fails the test if their time zones

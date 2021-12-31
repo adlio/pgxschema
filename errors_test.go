@@ -2,15 +2,20 @@ package pgxschema
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 var (
+	// ErrConnFailed indicates that the Conn() method failed (couldn't get a connection)
+	ErrConnFailed = fmt.Errorf("connect failed")
+
 	// ErrBeginFailed indicates that the Begin() method failed (couldn't start Tx)
 	ErrBeginFailed = fmt.Errorf("Begin Failed")
 
@@ -47,6 +52,43 @@ func (bt BadTransactor) Query(ctx context.Context, sql string, args ...interface
 	return nil, nil
 }
 
+// BadDB implements the interface for the *sql.DB Conn() method in a way that
+// always fails
+type BadDB struct{}
+
+func (bd BadDB) Acquire(ctx context.Context) (*pgxpool.Conn, error) {
+	return nil, ErrConnFailed
+}
+
+func TestApplyWithNilDBProvidesHelpfulError(t *testing.T) {
+	migrator := NewMigrator()
+	err := migrator.Apply(nil, testMigrations(t, "useless-ansi"))
+	if !errors.Is(err, ErrNilDB) {
+		t.Errorf("Expected %v, got %v", ErrNilDB, err)
+	}
+}
+
+func TestApplyWithNoMigrations(t *testing.T) {
+	withEachDB(t, func(db *pgxpool.Pool) {
+		migrator := NewMigrator()
+		err := migrator.Apply(db, []*Migration{})
+		if err != nil {
+			t.Errorf("Expected no error when running no migrations, got %s", err)
+		}
+
+	})
+}
+func TestApplyConnFailure(t *testing.T) {
+	bd := BadDB{}
+	withEachDB(t, func(db *pgxpool.Pool) {
+		migrator := NewMigrator()
+		err := migrator.Apply(bd, testMigrations(t, "useless-ansi"))
+		if err != ErrConnFailed {
+			t.Errorf("Expected %v, got %v", ErrConnFailed, err)
+		}
+	})
+}
+
 func TestLockFailure(t *testing.T) {
 	bq := BadQueryer{}
 	migrator := NewMigrator()
@@ -63,12 +105,9 @@ func TestUnlockFailure(t *testing.T) {
 
 func TestComputeMigrationPlanFailure(t *testing.T) {
 	bq := BadQueryer{}
-	m := makeTestMigrator()
-	_, err := m.computeMigrationPlan(bq, []*Migration{})
-	expectedContents := "FAIL: SELECT id, checksum, execution_time_in_millis, applied_at"
-	if err == nil || !strings.Contains(err.Error(), expectedContents) {
-		t.Errorf("Expected error msg with '%s'. Got '%v'.", expectedContents, err)
-	}
+	migrator := NewMigrator()
+	_, err := migrator.computeMigrationPlan(bq, []*Migration{})
+	expectErrorContains(t, err, "FAIL: SELECT id, checksum, execution_time_in_millis, applied_at")
 }
 
 func expectErrorContains(t *testing.T, err error, contains string) {

@@ -8,6 +8,8 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
+// DB  defines the interface for a *pgxpool.Pool, which can be used to get a
+// concrete connection to the database.
 type DB interface {
 	Acquire(ctx context.Context) (conn *pgxpool.Conn, err error)
 }
