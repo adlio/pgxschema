@@ -18,9 +18,6 @@ var (
 
 	// ErrBeginFailed indicates that the Begin() method failed (couldn't start Tx)
 	ErrBeginFailed = fmt.Errorf("Begin Failed")
-
-	// ErrPriorFailure indicates a failure happened earlier in the Migrator Apply()
-	ErrPriorFailure = fmt.Errorf("Previous error")
 )
 
 // BadQueryer implements the Queryer interface, but fails on every call to
