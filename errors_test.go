@@ -110,6 +110,14 @@ func TestComputeMigrationPlanFailure(t *testing.T) {
 	expectErrorContains(t, err, "FAIL: SELECT id, checksum, execution_time_in_millis, applied_at")
 }
 
+func TestRunWithNilTransactionHasHelpfulError(t *testing.T) {
+	migrator := NewMigrator()
+	err := migrator.run(nil, testMigrations(t, "useless-ansi"))
+	if err != ErrNilTx {
+		t.Errorf("Expected %v, got %v", ErrNilTx, err)
+	}
+}
+
 func expectErrorContains(t *testing.T, err error, contains string) {
 	t.Helper()
 	if err == nil {
