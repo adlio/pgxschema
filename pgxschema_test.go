@@ -1,9 +1,6 @@
 package pgxschema
 
 import (
-
-	// Postgres database driver
-
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
@@ -29,3 +26,20 @@ var (
 	_ Queryer = &pgxpool.Pool{}
 	_ Queryer = pgx.Tx(nil)
 )
+
+// TestDBs holds all of the specific database instances against which tests
+// will run.
+var TestDBs = map[string]*TestDB{
+	"postgres:11": {
+		DockerRepo: "postgres",
+		DockerTag:  "11",
+	},
+	"postgres:12": {
+		DockerRepo: "postgres",
+		DockerTag:  "12",
+	},
+	"postgres:latest": {
+		DockerRepo: "postgres",
+		DockerTag:  "latest",
+	},
+}

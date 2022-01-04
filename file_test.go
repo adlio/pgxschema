@@ -7,7 +7,7 @@ import (
 )
 
 func TestMigrationFromFilePath(t *testing.T) {
-	migration, err := MigrationFromFilePath("./example-migrations/2019-01-01 0900 Create Users.sql")
+	migration, err := MigrationFromFilePath("./test-migrations/saas/2019-01-01 0900 Create Users.sql")
 	if migration.Script != "CREATE TABLE users (id INTEGER NOT NULL PRIMARY KEY);" {
 		t.Error("Failed to get correct contents of migration")
 	}
@@ -17,14 +17,14 @@ func TestMigrationFromFilePath(t *testing.T) {
 }
 
 func TestMigrationFromFilePathWithInvalidPath(t *testing.T) {
-	_, err := MigrationFromFilePath("./example-migrations/nonexistent-file.sql")
+	_, err := MigrationFromFilePath("./test-migrations/saas/nonexistent-file.sql")
 	if err == nil {
 		t.Errorf("Expected failure when reading from nonexistent file")
 	}
 }
 
 func TestMigrationFromFile(t *testing.T) {
-	file, err := os.Open("./example-migrations/2019-01-01 0900 Create Users.sql")
+	file, err := os.Open("./test-migrations/saas/2019-01-01 0900 Create Users.sql")
 	if err != nil {
 		t.Error(err)
 	}
@@ -41,7 +41,7 @@ func TestMigrationFromFile(t *testing.T) {
 }
 
 func TestMigrationsFromDirectoryPath(t *testing.T) {
-	migrations, err := MigrationsFromDirectoryPath("./example-migrations")
+	migrations, err := MigrationsFromDirectoryPath("./test-migrations/saas")
 	SortMigrations(migrations)
 	if err != nil {
 		t.Error(err)
@@ -72,15 +72,15 @@ func TestMigrationsFromDirectoryPathThrowsErrorForInvalidGlob(t *testing.T) {
 }
 
 func TestMigrationsFromDirectoryPathThrowsErrorWithUnreadableFiles(t *testing.T) {
-	err := os.Chmod("./unreadable-migrations/unreadable.sql", 0200)
+	err := os.Chmod("./test-migrations/unreadable/unreadable.sql", 0200)
 	if err != nil {
 		t.Error(err)
 	}
-	_, err = MigrationsFromDirectoryPath("./unreadable-migrations")
+	_, err = MigrationsFromDirectoryPath("./test-migrations/unreadable")
 	if err == nil {
 		t.Error("Expected a failure when trying to read unreadable file")
 	}
-	_ = os.Chmod("./unreadable-migrations/unreadable.sql", 0644) // #nosec
+	_ = os.Chmod("./test-migrations/unreadable/unreadable.sql", 0644) // #nosec
 }
 
 type failedReader int
