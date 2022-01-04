@@ -19,27 +19,6 @@ to the PostgreSQL schema from inside a Go application using the
 - [Depends only on Go standard library and jackc/pgx](https://pkg.go.dev/github.com/adlio/pgxschema?tab=imports) (Note that all go.mod dependencies are used only in tests)
 - Unidirectional migrations (no "down" migration complexity)
 
-# Introduction
-
-Tools like
-[goose](https://github.com/pressly/goose) and
-[golang-migrate](https://github.com/golang-migrate/migrate) treat database
-migrations and the application as separate entities. This creates a deploy-time
-burden; somebody has to automate a process to get the migrations run at the
-right time before the new code is activated in an environment.
-
-This package takes a different approach. By requiring migrations be "baked in"
-to the Go binary, the migrations can be run at application startup regardless
-of the environment.
-
-Every approach has tradeoffs. If your project involves a DBA applying
-schema changes manually, this library is definitely not for you. On the other hand
-if you're distributing your application to end-users via a standalone Go binary,
-this approach might be perfect. This approach also works well in
-a cloud-native environment like Kubernetes or Google AppEngine, as long as
-you have good procedures to catch errors in your migrations before they hit
-production.
-
 # Usage Instructions
 
 Create a `pgxschema.Migrator` in your bootstrap/config/database connection code,
