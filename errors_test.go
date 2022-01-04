@@ -10,14 +10,7 @@ import (
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
-)
-
-var (
-	// ErrConnFailed indicates that the Conn() method failed (couldn't get a connection)
-	ErrConnFailed = fmt.Errorf("connect failed")
-
-	// ErrBeginFailed indicates that the Begin() method failed (couldn't start Tx)
-	ErrBeginFailed = fmt.Errorf("Begin Failed")
+	"github.com/pashagolub/pgxmock"
 )
 
 // BadQueryer implements the Queryer interface, but fails on every call to
@@ -31,30 +24,6 @@ func (bq BadQueryer) Exec(ctx context.Context, sql string, args ...interface{}) 
 
 func (bq BadQueryer) Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error) {
 	return nil, fmt.Errorf("FAIL: %s", strings.TrimSpace(sql))
-}
-
-// BadTransactor implements the Connection interface, but fails to Begin any
-// transactions.
-type BadTransactor struct{}
-
-func (bt BadTransactor) Begin(ctx context.Context) (pgx.Tx, error) {
-	return nil, ErrBeginFailed
-}
-
-func (bt BadTransactor) Exec(ctx context.Context, sql string, args ...interface{}) (pgconn.CommandTag, error) {
-	return []byte{}, nil
-}
-
-func (bt BadTransactor) Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error) {
-	return nil, nil
-}
-
-// BadDB implements the interface for the *sql.DB Conn() method in a way that
-// always fails
-type BadDB struct{}
-
-func (bd BadDB) Acquire(ctx context.Context) (*pgxpool.Conn, error) {
-	return nil, ErrConnFailed
 }
 
 func TestApplyWithNilDBProvidesHelpfulError(t *testing.T) {
@@ -75,15 +44,38 @@ func TestApplyWithNoMigrations(t *testing.T) {
 
 	})
 }
-func TestApplyConnFailure(t *testing.T) {
-	bd := BadDB{}
-	withEachDB(t, func(db *pgxpool.Pool) {
-		migrator := NewMigrator()
-		err := migrator.Apply(bd, testMigrations(t, "useless-ansi"))
-		if err != ErrConnFailed {
-			t.Errorf("Expected %v, got %v", ErrConnFailed, err)
-		}
-	})
+func TestApplyBeginFailure(t *testing.T) {
+	mock, err := pgxmock.NewConn()
+	if err != nil {
+		t.Error(err)
+	}
+	mock.ExpectExec("^SELECT pg_advisory_lock").WillReturnResult(pgconn.CommandTag{})
+	mock.ExpectBegin().WillReturnError(fmt.Errorf("Begin Failed"))
+	migrator := NewMigrator()
+	err = migrator.Apply(mock, testMigrations(t, "useless-ansi"))
+	expectErrorContains(t, err, "Begin Failed")
+}
+
+func TestApplyLockFailure(t *testing.T) {
+	mock, err := pgxmock.NewConn()
+	if err != nil {
+		t.Error(err)
+	}
+	mock.ExpectExec("^SELECT pg_advisory_lock").WillReturnError(fmt.Errorf("Lock Failed"))
+	err = NewMigrator().Apply(mock, testMigrations(t, "useless-ansi"))
+	expectErrorContains(t, err, "Lock Failed")
+}
+
+func TestApplyCreateMigrationsTableFailure(t *testing.T) {
+	mock, err := pgxmock.NewConn()
+	if err != nil {
+		t.Error(err)
+	}
+	mock.ExpectExec("^SELECT pg_advisory_lock").WillReturnResult(pgconn.CommandTag{})
+	mock.ExpectBegin()
+	mock.ExpectQuery("^CREATE TABLE").WillReturnError(fmt.Errorf("Create Migrations Table Failed"))
+	err = NewMigrator().Apply(mock, testMigrations(t, "useless-ansi"))
+	expectErrorContains(t, err, "Create Migrations Table Failed")
 }
 
 func TestLockFailure(t *testing.T) {
@@ -113,6 +105,12 @@ func TestRunWithNilTransactionHasHelpfulError(t *testing.T) {
 	if err != ErrNilTx {
 		t.Errorf("Expected %v, got %v", ErrNilTx, err)
 	}
+}
+
+func TestRunWithComputePlanFailHasHelpfulError(t *testing.T) {
+	bq := BadQueryer{}
+	err := NewMigrator().run(bq, testMigrations(t, "useless-ansi"))
+	expectErrorContains(t, err, "SELECT id, checksum")
 }
 
 func expectErrorContains(t *testing.T, err error, contains string) {
