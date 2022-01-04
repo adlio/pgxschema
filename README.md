@@ -1,16 +1,23 @@
 # PGX Schema - Embedded Database Migration Library for Go (PGX Driver Version)
 
+An embeddable library for tracking and applying modifications
+to the PostgreSQL schema from inside a Go application using the
+[jackc/pgx](https://github.com/jackc/pgx) driver.
+
 [![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=for-the-badge)](https://pkg.go.dev/adlio/pgxschema)
 [![CircleCI Build Status](https://img.shields.io/circleci/build/gh/adlio/pgxschema/main?style=for-the-badge)](https://circleci.com/gh/adlio/pgxschema/tree/main)
 [![Go Report Card](https://goreportcard.com/badge/github.com/adlio/pgxschema?style=for-the-badge)](https://goreportcard.com/report/github.com/adlio/pgxschema)
 [![Code Coverage](https://img.shields.io/codecov/c/github/adlio/pgxschema?style=for-the-badge)](https://codecov.io/gh/adlio/pgxschema)
 
-An opinionated, embedded library for tracking and applying modifications
-to the PostgreSQL schema from inside a Go application using the
-[jackc/pgx](https://github.com/jackc/pgx) driver.
-
 **NOTE**: If you use a `database/sql` driver instead, please see the related
 [adlio/schema](https://github.com/adlio/schema) package.
+
+## Features
+
+- Cloud-friendly design tolerates embedded use in clusters
+- Supports migrations in embed.FS (requires go:embed in Go 1.16+)
+- [Depends only on Go standard library and jackc/pgx](https://pkg.go.dev/github.com/adlio/pgxschema?tab=imports) (Note that all go.mod dependencies are used only in tests)
+- Unidirectional migrations (no "down" migration complexity)
 
 # Introduction
 
@@ -37,29 +44,63 @@ production.
 
 Create a `pgxschema.Migrator` in your bootstrap/config/database connection code,
 then call its `Apply()` method with your database connection and a slice of
-`*pgxschema.Migration` structs. Like so:
-
-    db, err := pgxpool.Connect() // or pgx.Connect()
-
-    migrator := pgxschema.NewMigrator()
-    migrator.Apply(db, []*pgxschema.Migration{
-      &pgxschema.Migration{
-        ID: "2019-09-24 Create Albums",
-        Script: `
-        CREATE TABLE albums (
-          id SERIAL PRIMARY KEY,
-          title CHARACTER VARYING (255) NOT NULL
-        )
-        `
-      }
-    })
+`*pgxschema.Migration` structs.
 
 The `.Apply()` function figures out which of the supplied Migrations have not
 yet been executed in the database (based on the ID), and executes the `Script`
-for each in **alphabetical order by ID**. This procedure means its OK to call
-`.Apply()` on the same Migrator with a different set of Migrations each time
+for each in **alphabetical order by ID**.
 
-# Customization Options
+The `[]*pgxschema.Migration` can be created manually, but the package has some
+utility functions to make it easier to read .sql files into structs, with the
+filename as the `ID` and the contents being the `Script`.
+
+## Using go:embed (requires Go 1.16+)
+
+Go 1.16 added features to embed a directory of files into the binary as an
+embedded filesystem (`embed.FS`).
+
+Assuming you have a directory of SQL files called `my-migrations/` next to your
+main.go file, you'll run something like this (the comments with go:embed are
+relevant).
+
+```go
+//go:embed my-migrations
+var MyMigrations embed.FS
+
+func main() {
+   db, err := pgxpool.Connect() // or pgx.Connect()
+
+   migrator := pgxschema.NewMigrator()
+   err = migrator.Apply(
+      db,
+      pgxschema.FSMigrations(MyMigrations, "my-migrations/*.sql"),
+   )
+}
+```
+
+## Using Inline Migration Structs
+
+If you're running an earlier version of Go, Migration{} structs will need to be
+created manually:
+
+```go
+db, err := pgxpool.Connect() // or pgx.Connect()
+
+migrator := pgxschema.NewMigrator()
+migrator.Apply(db, []*pgxschema.Migration{
+   &pgxschema.Migration{
+      ID: "2019-09-24 Create Albums",
+      Script: `
+      CREATE TABLE albums (
+         id SERIAL PRIMARY KEY,
+         title CHARACTER VARYING (255) NOT NULL
+      )
+      `,
+   },
+})
+```
+
+# Constructor Options
 
 The `NewMigrator()` function accepts option arguments to customize its behavior.
 
@@ -80,9 +121,10 @@ arguments:
 m := pgxschema.NewMigrator(pgxschema.WithTableName("my_schema", "my_migrations"))
 ```
 
-**NOTE**: Providing a schema like so does not influence the behavior SQL run
+**NOTE**: Providing a schema like so does not influence the behavior of SQL run
 inside your migrations. If a migration needs to `CREATE TABLE` in a specific
-schema, that will need to be specified inside the migration itself.
+schema, that will need to be specified inside the migration itself or configured
+via the `search_path` when opening a connection.
 
 It is theoretically possible to create multiple Migrators and to use mutliple
 migration tracking tables within the same application and database.
@@ -105,41 +147,35 @@ first-arriving process' successful completion.
 Migrations **are not** executed in the order they are specified in the slice.
 They will be re-sorted alphabetically by their IDs before executing them.
 
-# Rules for Writing Migrations
+## Rules for Writing Migrations
 
-1.  **Never, ever change** the `ID` of a Migration which has already
-    been executed on your database. Doing so will cause the system to recognize
-    this as a new migration which needs to be applied again.
-2.  Use a consistent, but descriptive format for migration IDs. A recommended
-    format is to use the timestamp as a prefix followed by a decriptive phrase:
+1.  **Never, ever change** the `ID` (filename) or `Script` (file contents)
+    of a Migration which has already been executed on your database. If you've
+    made a mistake, you'll need to correct it in a subsequent migration.
+2.  Use a consistent, but descriptive format for migration `ID`s/filenames.
+    Consider prefixing them with today's timestamp. Examples:
 
-         ID: "2019-01-01T13:45 Creates Users"
-         ID: "2019-01-10T10:33 Creates Artists"
+          ID: "2019-01-01T13:45 Creates Users"
+          ID: "2019-01-10T10:33 Creates Artists"
 
-    Do not use simple sequentialnumbers like `ID: "1"` with a distributed team
+    Do not use simple sequential numbers like `ID: "1"` with a distributed team
     unless you have a reliable process for developers to "claim" the next ID.
-
-# Inspecting the State of Applied Migrations
-
-Call `migrator.GetAppliedMigrations(db)` to get info about migrations which
-have been successfully applied.
-
-# TODO List
-
-- [x] Port `adlio/schema` to a `jackc/pgx`-friendly version
-- [x] Alter transaction handling to be more PostgreSQL-specific
-- [x] 100% test coverage, including running against multiple PostgreSQL versions
-- [ ] Support for creating []\*Migration from a Go 1.16 `embed.FS`
-- [ ] Documentation for using Go 1.16 // go:embed to populate Script variables
-- [ ] Options for alternative failure behavior when `pg_advisory_lock()` takes too long.
-      The current behavior should allow for early failure by providing a context with a
-      timeout to `WithContext()`, but this hasn't been tested.
 
 # Contributions
 
 ... are welcome. Please include tests with your contribution. We've integrated
 [dockertest](https://github.com/ory/dockertest) to automate the process of
 creating clean test databases.
+
+## Testing Procedure
+
+Testing requires a Docker daemon running on your test machine to spin-up
+temporary PostgreSQL database servers to test against. Ensure your contribution
+keeps test coverage high and passes all existing tests.
+
+```bash
+go test -v -cover
+```
 
 ## Package Opinions
 
@@ -151,31 +187,37 @@ particular set of opinions:
    "compiled in" to the build, and should not rely on external tools.
 2. Using an external command-line tool for schema migrations needlessly
    complicates testing and deployment.
-3. Sequentially-numbered integer migration IDs will create too many unnecessary
-   schema collisions on a distributed, asynchronously-communicating team.
-4. SQL is the best language to use to specify changes to SQL schemas.
-5. "Down" migrations add needless complication, aren't often used, and are
+3. SQL is the best language to use to specify changes to SQL schemas.
+4. "Down" migrations add needless complication, aren't often used, and are
    tedious to properly test when they are used. In the unlikely event you need
    to migrate backwards, it's possible to write the "rollback" migration as
    a separate "up" migration.
-6. Deep dependency chains should be avoided, especially in a compiled
+5. Deep dependency chains should be avoided, especially in a compiled
    binary. We don't want to import an ORM into our binaries just to get SQL
-   the features of this package. The `pgxschema` package imports only
+   querying support. The `pgxschema` package imports only
    [standard library packages](https://godoc.org/github.com/adlio/pgxschema?imports)
    and the `jackc/pgx` driver code.
    (**NOTE** \*We do import `ory/dockertest` to automate testing on various
    PostgreSQL versions via docker).
 
-## Testing Procedure
+# Roadmap
 
-Testing requires a Docker daemon running on your test machine to spin-up
-temporary PostgreSQL database servers to test against.
-
-```bash
-go test -v -cover
-```
+- [x] Port `adlio/schema` to a `jackc/pgx`-friendly version
+- [x] Alter transaction handling to be more PostgreSQL-specific
+- [x] 100% test coverage, including running against multiple PostgreSQL versions
+- [ ] Support for creating []\*Migration from a Go 1.16 `embed.FS`
+- [ ] Documentation for using Go 1.16 // go:embed to populate Script variables
+- [ ] Options for alternative failure behavior when `pg_advisory_lock()` takes too long.
+      The current behavior should allow for early failure by providing a context with a
+      timeout to `WithContext()`, but this hasn't been tested.
 
 # Version History
+
+## 1.0.0 - Jan 4, 2022
+
+- Add support for migrations in an embed.FS (`FSMigrations(filesystem fs.FS, glob string)`)
+- Update go.mod to `go 1.17`
+- Simplify Apply() routine, improve test coverage
 
 ## 0.0.3 - Dec 10, 2021
 
