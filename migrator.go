@@ -59,7 +59,7 @@ func (m *Migrator) QuotedTableName() string {
 
 // Apply takes a slice of Migrations and applies any which have not yet
 // been applied
-func (m *Migrator) Apply(db DB, migrations []*Migration) error {
+func (m *Migrator) Apply(db Connection, migrations []*Migration) error {
 	if db == nil {
 		return ErrNilDB
 	}
@@ -68,25 +68,13 @@ func (m *Migrator) Apply(db DB, migrations []*Migration) error {
 		return nil
 	}
 
-	if m.ctx == nil {
-		m.ctx = context.Background()
-	}
-
-	// Obtain a concrete connection to the database which will be closed
-	// at the conclusion of Apply()
-	conn, err := db.Acquire(m.ctx)
+	err := m.lock(db)
 	if err != nil {
 		return err
 	}
-	defer conn.Release()
+	defer func() { err = coalesceErrs(err, m.unlock(db)) }()
 
-	err = m.lock(conn)
-	if err != nil {
-		return err
-	}
-	defer func() { err = coalesceErrs(err, m.unlock(conn)) }()
-
-	tx, err := conn.Begin(m.ctx)
+	tx, err := db.Begin(m.ctx)
 	if err != nil {
 		return err
 	}
@@ -142,7 +130,7 @@ func (m *Migrator) unlock(db Queryer) error {
 
 func (m *Migrator) run(tx Queryer, migrations []*Migration) error {
 	if tx == nil {
-		return ErrNilDB
+		return ErrNilTx
 	}
 
 	plan, err := m.computeMigrationPlan(tx, migrations)

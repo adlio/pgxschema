@@ -5,11 +5,6 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
-// Interface verification that *sql.DB satisfies our DB interface
-var (
-	_ DB = &pgxpool.Pool{}
-)
-
 // Interface verification that pgx.Conn and pgxpool.Pool both satisfy our
 // Connection interface
 var (

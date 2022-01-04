@@ -44,6 +44,7 @@ func TestApplyWithNoMigrations(t *testing.T) {
 
 	})
 }
+
 func TestApplyBeginFailure(t *testing.T) {
 	mock, err := pgxmock.NewConn()
 	if err != nil {

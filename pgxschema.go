@@ -5,14 +5,7 @@ import (
 
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
 )
-
-// DB  defines the interface for a *pgxpool.Pool, which can be used to get a
-// concrete connection to the database.
-type DB interface {
-	Acquire(ctx context.Context) (conn *pgxpool.Conn, err error)
-}
 
 // Connection defines the interface for either a *pgxpool.Pool or a *pgx.Conn,
 // both of which can start new transactions and execute queries.
