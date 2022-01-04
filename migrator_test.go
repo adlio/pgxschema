@@ -244,7 +244,7 @@ func TestApplyMultistatementMigrations(t *testing.T) {
 // makeTestMigrator is a utility function which produces a migrator with an
 // isolated environment (isolated due to a unique name for the migration
 // tracking table).
-func makeTestMigrator() Migrator {
+func makeTestMigrator() *Migrator {
 	tableName := time.Now().Format(time.RFC3339Nano)
 	return NewMigrator(WithTableName(tableName))
 }

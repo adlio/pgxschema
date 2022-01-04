@@ -39,7 +39,7 @@ type Migrator struct {
 
 // NewMigrator creates a new Migrator with the supplied
 // options
-func NewMigrator(options ...Option) Migrator {
+func NewMigrator(options ...Option) *Migrator {
 	m := Migrator{
 		tableName: DefaultTableName,
 		ctx:       context.Background(),
@@ -48,7 +48,7 @@ func NewMigrator(options ...Option) Migrator {
 		m = opt(m)
 	}
 	m.lockID = LockIdentifierForTable(m.tableName)
-	return m
+	return &m
 }
 
 // QuotedTableName returns the dialect-quoted fully-qualified name for the
