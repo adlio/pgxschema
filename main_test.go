@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/ory/dockertest"
+	"github.com/ory/dockertest/v3"
 )
 
 // TestMain replaces the normal test runner for this package. It connects to
