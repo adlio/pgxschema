@@ -199,6 +199,10 @@ particular set of opinions:
 
 # Version History
 
+## 1.0.1  - Jun 19, 2022
+
+- Update downstream dependencies of ory/dockertest due to security issues.
+
 ## 1.0.0 - Jan 4, 2022
 
 - Add support for migrations in an embed.FS (`FSMigrations(filesystem fs.FS, glob string)`)
