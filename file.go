@@ -2,7 +2,7 @@ package pgxschema
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -11,7 +11,6 @@ import (
 
 // MigrationIDFromFilename removes directory paths and extensions
 // from the filename to make a friendlier Migration ID
-//
 func MigrationIDFromFilename(filename string) string {
 	return strings.TrimSuffix(filepath.Base(filename), filepath.Ext(filename))
 }
@@ -48,7 +47,7 @@ func MigrationsFromDirectoryPath(dirPath string) (migrations []*Migration, err e
 func MigrationFromFilePath(filename string) (migration *Migration, err error) {
 	migration = &Migration{}
 	migration.ID = MigrationIDFromFilename(filename)
-	contents, err := ioutil.ReadFile(path.Clean(filename))
+	contents, err := os.ReadFile(path.Clean(filename))
 	if err != nil {
 		return migration, fmt.Errorf("failed to read migration from '%s': %w", filename, err)
 	}
@@ -68,7 +67,7 @@ type File interface {
 func MigrationFromFile(file File) (migration *Migration, err error) {
 	migration = &Migration{}
 	migration.ID = MigrationIDFromFilename(file.Name())
-	content, err := ioutil.ReadAll(file)
+	content, err := io.ReadAll(file)
 	if err != nil {
 		return migration, err
 	}

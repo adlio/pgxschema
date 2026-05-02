@@ -10,7 +10,6 @@ const postgresAdvisoryLockSalt = 542384964
 
 // QuotedTableName returns the string value of the name of the migration
 // tracking table after it has been quoted for Postgres
-//
 func QuotedTableName(schemaName, tableName string) string {
 	if schemaName == "" {
 		return QuotedIdent(tableName)
@@ -48,7 +47,6 @@ func QuotedIdent(ident string) string {
 
 // LockIdentifierForTable computes a hash of the migrations table's name which
 // can be used as a unique name for the Postgres advisory lock
-//
 func LockIdentifierForTable(tableName string) int64 {
 	sum := crc32.ChecksumIEEE([]byte(tableName))
 	return int64(sum) * postgresAdvisoryLockSalt

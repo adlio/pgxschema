@@ -134,7 +134,6 @@ func TestFailedMigration(t *testing.T) {
 // connections to each test database and attempts to call .Apply() on them all
 // concurrently. The migrations include an INSERT statement, which allows us
 // to count to ensure that each unique migration was only run once.
-//
 func TestSimultaneousApply(t *testing.T) {
 	concurrency := 4
 	dataTable := fmt.Sprintf("data%d", rand.Int()) // #nosec don't need a strong RNG here
@@ -160,7 +159,7 @@ func TestSimultaneousApply(t *testing.T) {
 	var wg sync.WaitGroup
 	for i := 0; i < concurrency; i++ {
 		wg.Add(1)
-		go func(i int) {
+		go func(_ int) {
 			db := connectDB(t, "postgres:latest")
 			migrator := NewMigrator(WithTableName(migrationsTable))
 			err := migrator.Apply(db, sharedMigrations)

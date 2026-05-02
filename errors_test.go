@@ -18,11 +18,11 @@ import (
 // verify the "right" failure occurred.
 type BadQueryer struct{}
 
-func (bq BadQueryer) Exec(ctx context.Context, sql string, args ...interface{}) (pgconn.CommandTag, error) {
+func (bq BadQueryer) Exec(_ context.Context, sql string, _ ...interface{}) (pgconn.CommandTag, error) {
 	return []byte{}, fmt.Errorf("FAIL: %s", strings.TrimSpace(sql))
 }
 
-func (bq BadQueryer) Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error) {
+func (bq BadQueryer) Query(_ context.Context, sql string, _ ...interface{}) (pgx.Rows, error) {
 	return nil, fmt.Errorf("FAIL: %s", strings.TrimSpace(sql))
 }
 
