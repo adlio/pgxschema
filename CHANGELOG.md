@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated all transitive dependencies (security fixes for `golang.org/x/crypto`, `opencontainers/runc`, `docker/docker`, and others)
 - Migrated CI from CircleCI to GitHub Actions (lint, vet, build, test as parallel jobs)
 - Upgraded golangci-lint to v2.11.4 (config migrated to v2 format)
+- Bumped GitHub Actions to Node.js 24 compatible versions (`actions/checkout` v6, `actions/setup-go` v6, `codecov/codecov-action` v5)
 - Replaced deprecated `io/ioutil` with `os.ReadFile` and `io.ReadAll`
 - Lowercased error strings to follow Go conventions
 - Added automated release workflow
