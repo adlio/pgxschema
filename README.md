@@ -15,8 +15,8 @@ to the PostgreSQL schema from inside a Go application using the
 ## Features
 
 - Cloud-friendly design tolerates embedded use in clusters
-- Supports migrations in embed.FS (requires go:embed in Go 1.16+)
-- [Depends only on Go standard library and jackc/pgx](https://pkg.go.dev/github.com/adlio/pgxschema?tab=imports) (Note that all go.mod dependencies are used only in tests)
+- Supports migrations via `embed.FS` or inline structs
+- [Depends only on Go standard library and jackc/pgx](https://pkg.go.dev/github.com/adlio/pgxschema?tab=imports) (all other go.mod dependencies are used only in tests)
 - Unidirectional migrations (no "down" migration complexity)
 
 # Usage Instructions
@@ -33,14 +33,10 @@ The `[]*pgxschema.Migration` can be created manually, but the package has some
 utility functions to make it easier to read .sql files into structs, with the
 filename as the `ID` and the contents being the `Script`.
 
-## Using go:embed (requires Go 1.16+)
-
-Go 1.16 added features to embed a directory of files into the binary as an
-embedded filesystem (`embed.FS`).
+## Using go:embed (Recommended)
 
 Assuming you have a directory of SQL files called `my-migrations/` next to your
-main.go file, you'll run something like this (the comments with go:embed are
-relevant).
+main.go file:
 
 ```go
 //go:embed my-migrations
@@ -64,15 +60,14 @@ example.
 
 ## Using Inline Migration Structs
 
-If you're running an earlier version of Go, Migration{} structs will need to be
-created manually:
+Migrations can also be defined inline:
 
 ```go
 db, err := pgxpool.Connect() // or pgx.Connect()
 
 migrator := pgxschema.NewMigrator()
 migrator.Apply(db, []*pgxschema.Migration{
-   &pgxschema.Migration{
+   {
       ID: "2019-09-24 Create Albums",
       Script: `
       CREATE TABLE albums (
@@ -110,19 +105,19 @@ inside your migrations. If a migration needs to `CREATE TABLE` in a specific
 schema, that will need to be specified inside the migration itself or configured
 via the `search_path` when opening a connection.
 
-It is theoretically possible to create multiple Migrators and to use mutliple
+It is theoretically possible to create multiple Migrators and to use multiple
 migration tracking tables within the same application and database.
 
 # Concurrent Execution Support
 
 The `pgxschema` package utilizes
-[PostgreSQL Advisory Locks](https://www.postgresql.org/docs/13/explicit-locking.html#ADVISORY-LOCKS)
+[PostgreSQL Advisory Locks](https://www.postgresql.org/docs/current/explicit-locking.html#ADVISORY-LOCKS)
 to ensure that only one process can run migrations at a time.
 
 This allows multiple **processes** (not just goroutines) to run `Apply` on
 identically configured migrators simultaneously. The first-arriving process
 will **win** and perform all needed migrations on the database. All other
-processses will wait until the lock is released, after which they'll each
+processes will wait until the lock is released, after which they'll each
 obtain the lock and run `Apply()` which should be a no-op based on the
 first-arriving process' successful completion.
 
@@ -167,7 +162,7 @@ There are many other schema migration tools. This one exists because of a
 particular set of opinions:
 
 1. Database credentials are runtime configuration details, but database
-   schema is a **build-time applicaton dependency**, which means it should be
+   schema is a **build-time application dependency**, which means it should be
    "compiled in" to the build, and should not rely on external tools.
 2. Using an external command-line tool for schema migrations needlessly
    complicates testing and deployment.
@@ -179,18 +174,18 @@ particular set of opinions:
 5. Deep dependency chains should be avoided, especially in a compiled
    binary. We don't want to import an ORM into our binaries just to get SQL
    querying support. The `pgxschema` package imports only
-   [standard library packages](https://godoc.org/github.com/adlio/pgxschema?imports)
+   [standard library packages](https://pkg.go.dev/github.com/adlio/pgxschema?tab=imports)
    and the `jackc/pgx` driver code.
-   (**NOTE** \*We do import `ory/dockertest` to automate testing on various
-   PostgreSQL versions via docker).
+   (**NOTE**: We do import `ory/dockertest` to automate testing on various
+   PostgreSQL versions via Docker).
 
 # Roadmap
 
 - [x] Port `adlio/schema` to a `jackc/pgx`-friendly version
 - [x] Alter transaction handling to be more PostgreSQL-specific
 - [x] 100% test coverage, including running against multiple PostgreSQL versions
-- [x] Support for creating []\*Migration from a Go 1.16 `embed.FS`
-- [x] Documentation for using Go 1.16 // go:embed to populate Script variables
+- [x] Support for creating []\*Migration from an `embed.FS`
+- [x] Documentation for using `go:embed` to populate Script variables
 - [ ] Options for alternative failure behavior when `pg_advisory_lock()` takes too long.
       The current behavior should allow for early failure by providing a context with a
       timeout to `WithContext()`, but this hasn't been tested.
