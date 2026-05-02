@@ -16,7 +16,6 @@ type Connection interface {
 
 // Queryer defines the interface for either a *pgxpool.Pool, a *pgx.Conn or a
 // pgx.Tx, all of which can execute queries
-//
 type Queryer interface {
 	Exec(ctx context.Context, sql string, args ...interface{}) (pgconn.CommandTag, error)
 	Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error)

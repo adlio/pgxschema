@@ -89,7 +89,7 @@ type StrLog string
 func (nl *StrLog) Print(msgs ...interface{}) {
 	var sb strings.Builder
 	for _, msg := range msgs {
-		sb.WriteString(fmt.Sprintf("%s", msg))
+		fmt.Fprintf(&sb, "%s", msg)
 	}
 	result := StrLog(sb.String())
 	*nl = result

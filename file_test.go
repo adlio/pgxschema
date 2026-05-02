@@ -89,7 +89,7 @@ func (fr failedReader) Name() string {
 	return "fakeFile.sql"
 }
 
-func (fr failedReader) Read(p []byte) (n int, err error) {
+func (fr failedReader) Read(_ []byte) (n int, err error) {
 	return 0, errors.New("this reader always fails")
 }
 

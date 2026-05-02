@@ -7,5 +7,4 @@
 // pgxpool.Pool to its .Apply() method.
 //
 // See the package's README.md file for more usage instructions.
-//
 package pgxschema

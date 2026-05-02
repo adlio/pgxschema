@@ -44,7 +44,6 @@ func (c *TestDB) DSN() string {
 
 // DockerEnvars computes the environment variables that are needed for a
 // docker instance.
-//
 func (c *TestDB) DockerEnvars() []string {
 	return []string{
 		fmt.Sprintf("POSTGRES_USER=%s", c.Username()),
@@ -57,7 +56,6 @@ func (c *TestDB) DockerEnvars() []string {
 // instances, this function triggers the `docker run` call. For SQLite-based
 // test instances, this creates the data file. In all cases, we verify that
 // the database is connectable via a test connection.
-//
 func (c *TestDB) Init(pool *dockertest.Pool) {
 	var err error
 
@@ -96,14 +94,12 @@ func (c *TestDB) Init(pool *dockertest.Pool) {
 	})
 	if err != nil {
 		log.Fatalf("Could not connect to %s: %s", c.DSN(), err)
-	} else {
-		log.Printf("Successfully connected to %s", c.DSN())
 	}
+	log.Printf("Successfully connected to %s", c.DSN())
 }
 
 // Connect creates an additional *pgxpool.Pool connection for a particular
 // test database.
-//
 func (c *TestDB) Connect(t *testing.T) *pgxpool.Pool {
 	db, err := pgxpool.Connect(context.Background(), c.DSN())
 	if err != nil {
@@ -114,7 +110,6 @@ func (c *TestDB) Connect(t *testing.T) *pgxpool.Pool {
 
 // Cleanup should be called after all tests with a database instance are
 // complete.
-//
 func (c *TestDB) Cleanup(pool *dockertest.Pool) {
 	if c.Resource != nil {
 		err := pool.Purge(c.Resource)
