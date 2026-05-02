@@ -5,7 +5,7 @@ to the PostgreSQL schema from inside a Go application using the
 [jackc/pgx](https://github.com/jackc/pgx) driver.
 
 [![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=for-the-badge)](https://pkg.go.dev/adlio/pgxschema)
-[![CircleCI Build Status](https://img.shields.io/circleci/build/gh/adlio/pgxschema/main?style=for-the-badge)](https://circleci.com/gh/adlio/pgxschema/tree/main)
+[![CI](https://img.shields.io/github/actions/workflow/status/adlio/pgxschema/ci.yml?branch=main&style=for-the-badge&logo=github)](https://github.com/adlio/pgxschema/actions/workflows/ci.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/adlio/pgxschema?style=for-the-badge)](https://goreportcard.com/report/github.com/adlio/pgxschema)
 [![Code Coverage](https://img.shields.io/codecov/c/github/adlio/pgxschema?style=for-the-badge)](https://codecov.io/gh/adlio/pgxschema)
 
@@ -199,28 +199,7 @@ particular set of opinions:
 
 # Version History
 
-## 1.0.1  - Jun 19, 2022
-
-- Update downstream dependencies of ory/dockertest due to security issues.
-
-## 1.0.0 - Jan 4, 2022
-
-- Add support for migrations in an embed.FS (`FSMigrations(filesystem fs.FS, glob string)`)
-- Update go.mod to `go 1.17`
-- Simplify Apply() routine, improve test coverage
-- Security updates to upstream dependencies
-
-## 0.0.3 - Dec 10, 2021
-
-Security updates to upstream dependencies.
-
-## 0.0.2 - Nov 18, 2021
-
-Security updates to upstream dependencies.
-
-## 0.0.1 - Oct 7, 2021
-
-First port from `adlio/schema`.
+See [CHANGELOG.md](CHANGELOG.md) for a detailed version history.
 
 # License
 
