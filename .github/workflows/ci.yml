@@ -2,12 +2,12 @@ name: CI
 
 on:
   push:
-    branches: [master, main]
+    branches: [main]
   pull_request:
-    branches: [master, main]
+    branches: [main]
 
 jobs:
-  golangci-lint:
+  lint:
     name: Lint
     runs-on: ubuntu-latest
     steps:
@@ -23,8 +23,8 @@ jobs:
           version: v2.11.4
           args: --timeout 2m
 
-  go-build-and-test:
-    name: Build & Test
+  vet:
+    name: Vet
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,16 +33,36 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Fetch Dependencies
-        run: go get -t .
+      - name: Run go vet
+        run: go vet ./...
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
 
       - name: Build
-        run: go build .
+        run: go build ./...
 
-      - name: Test
-        run: go test -race -coverprofile=coverage.txt -covermode=atomic
+  test:
+    name: Test + Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Upload Coverage to Codecov
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Run tests with coverage
+        run: go test -race -coverprofile=coverage.txt -covermode=atomic ./...
+
+      - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
           files: coverage.txt
