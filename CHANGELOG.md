@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-07-09
+
+### Security
+
+- Upgraded `github.com/opencontainers/runc` from v1.2.3 to v1.2.8, resolving CVE-2025-31133, CVE-2025-52565, CVE-2025-52881 (High severity) and CVE-2026-41579 (Moderate severity)
+
+### Fixed
+
+- Fixed a flaky timing assertion in `TestApplyInLexicalOrder` (`ExecutionTimeInMillis` could legitimately be 0 for sub-millisecond migrations)
+
+### Known Issues
+
+- `github.com/jackc/pgx/v4` (<= v4.18.3) and `github.com/jackc/pgproto3/v2` (<= v2.3.3) still have known vulnerabilities; these are the final releases in their major version lines and require a migration to pgx/v5 to resolve
+
 ## [1.1.0] - 2026-05-02
 
 ### Changed
@@ -75,7 +89,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - File-based and directory-based migration loading
 - Configurable table names and schemas
 
-[Unreleased]: https://github.com/adlio/pgxschema/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/adlio/pgxschema/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/adlio/pgxschema/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/adlio/pgxschema/compare/v1.0.2...v1.1.0
 [1.0.2]: https://github.com/adlio/pgxschema/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/adlio/pgxschema/compare/v1.0.0...v1.0.1
