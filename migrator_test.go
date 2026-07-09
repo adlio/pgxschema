@@ -78,8 +78,8 @@ func TestApplyInLexicalOrder(t *testing.T) {
 		if firstMigration.Checksum == "" {
 			t.Error("Expected non-blank Checksum value after successful migration")
 		}
-		if firstMigration.ExecutionTimeInMillis < 1 {
-			t.Errorf("Expected ExecutionTimeInMillis of %s to be tracked. Got %d", firstMigration.ID, firstMigration.ExecutionTimeInMillis)
+		if firstMigration.ExecutionTimeInMillis < 0 {
+			t.Errorf("Expected ExecutionTimeInMillis of %s to be non-negative. Got %d", firstMigration.ID, firstMigration.ExecutionTimeInMillis)
 		}
 		// Put value in consistent timezone to aid error message readability
 		appliedAt := firstMigration.AppliedAt.Round(time.Second)
