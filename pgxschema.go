@@ -3,8 +3,8 @@ package pgxschema
 import (
 	"context"
 
-	"github.com/jackc/pgconn"
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // Connection defines the interface for either a *pgxpool.Pool or a *pgx.Conn,

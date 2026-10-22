@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/ory/dockertest/v3"
 )
 
@@ -72,7 +72,7 @@ func connectDB(t *testing.T, name string) *pgxpool.Pool {
 	if !exists {
 		t.Errorf("Database '%s' doesn't exist.", name)
 	}
-	db, err := pgxpool.Connect(context.Background(), info.DSN())
+	db, err := pgxpool.New(context.Background(), info.DSN())
 	if err != nil {
 		t.Fatalf("Failed to connect to %s: %s", name, err)
 	}
