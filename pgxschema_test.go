@@ -1,8 +1,8 @@
 package pgxschema
 
 import (
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // Interface verification that pgx.Conn and pgxpool.Pool both satisfy our

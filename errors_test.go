@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jackc/pgconn"
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/pashagolub/pgxmock"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/pashagolub/pgxmock/v4"
 )
 
 // BadQueryer implements the Queryer interface, but fails on every call to
@@ -19,7 +19,7 @@ import (
 type BadQueryer struct{}
 
 func (bq BadQueryer) Exec(_ context.Context, sql string, _ ...interface{}) (pgconn.CommandTag, error) {
-	return []byte{}, fmt.Errorf("FAIL: %s", strings.TrimSpace(sql))
+	return pgconn.CommandTag{}, fmt.Errorf("FAIL: %s", strings.TrimSpace(sql))
 }
 
 func (bq BadQueryer) Query(_ context.Context, sql string, _ ...interface{}) (pgx.Rows, error) {
@@ -50,7 +50,7 @@ func TestApplyBeginFailure(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	mock.ExpectExec("^SELECT pg_advisory_lock").WillReturnResult(pgconn.CommandTag{})
+	mock.ExpectExec("^SELECT pg_advisory_lock").WillReturnResult(pgconn.NewCommandTag("SELECT 1"))
 	mock.ExpectBegin().WillReturnError(fmt.Errorf("Begin Failed"))
 	migrator := NewMigrator()
 	err = migrator.Apply(mock, testMigrations(t, "useless-ansi"))
@@ -72,7 +72,7 @@ func TestApplyCreateMigrationsTableFailure(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	mock.ExpectExec("^SELECT pg_advisory_lock").WillReturnResult(pgconn.CommandTag{})
+	mock.ExpectExec("^SELECT pg_advisory_lock").WillReturnResult(pgconn.NewCommandTag("SELECT 1"))
 	mock.ExpectBegin()
 	mock.ExpectQuery("^CREATE TABLE").WillReturnError(fmt.Errorf("Create Migrations Table Failed"))
 	err = NewMigrator().Apply(mock, testMigrations(t, "useless-ansi"))

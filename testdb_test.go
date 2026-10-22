@@ -6,8 +6,8 @@ import (
 	"log"
 	"testing"
 
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
 )
@@ -101,7 +101,7 @@ func (c *TestDB) Init(pool *dockertest.Pool) {
 // Connect creates an additional *pgxpool.Pool connection for a particular
 // test database.
 func (c *TestDB) Connect(t *testing.T) *pgxpool.Pool {
-	db, err := pgxpool.Connect(context.Background(), c.DSN())
+	db, err := pgxpool.New(context.Background(), c.DSN())
 	if err != nil {
 		t.Error(err)
 	}
