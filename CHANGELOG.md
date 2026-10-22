@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-22
+
+### Changed
+
+- **BREAKING: migrated from `jackc/pgx/v4` to `jackc/pgx/v5`.** The `Connection`, `Queryer`, and `Transactor` interfaces now use v5 types (`pgx.Rows`, `pgx.Tx`, and `pgconn.CommandTag` from `github.com/jackc/pgx/v5/pgconn`). Consumers must update their imports from `github.com/jackc/pgx/v4` to `github.com/jackc/pgx/v5` (and `github.com/jackc/pgxpool` call sites: `pgxpool.Connect` is now `pgxpool.New`).
+
+### Security
+
+- Resolved GHSA-j88v-2chj-qfwx (SQL injection via placeholder confusion in `jackc/pgx`, fixed in v5.9.2+) and GHSA-jqcq-xjh3-6g23 (denial of service in `jackc/pgproto3/v2`, which v5 no longer depends on). Neither had a fix available in the pgx v4 line.
+
 ## [1.2.0] - 2026-07-09
 
 ### Security
